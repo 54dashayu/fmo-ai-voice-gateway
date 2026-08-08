@@ -1,8 +1,7 @@
 [Unit]
 Description=FMO AI read-only MQTT monitor
-After=network-online.target emqx.service
+After=network-online.target
 Wants=network-online.target
-Requires=emqx.service
 
 [Service]
 Type=simple
@@ -10,8 +9,9 @@ User=fmo-ai
 Group=fmo-ai
 WorkingDirectory=/opt/fmo-ai-gateway
 EnvironmentFile=/etc/fmo-ai-gateway.env
+Environment=FMO_GATEWAY_CONFIG_PATH=/etc/fmo-ai-gateway/gateway-config.json
 ExecStartPre=/usr/bin/test -w /var/lib/fmo-ai-gateway/audio
-ExecStart=/usr/bin/python3 /opt/fmo-ai-gateway/mqtt_monitor.py
+ExecStart=/opt/fmo-ai-gateway/venv/bin/python /opt/fmo-ai-gateway/mqtt_monitor.py
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
@@ -28,38 +28,5 @@ StateDirectoryMode=0700
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 MemoryMax=48M
 TasksMax=16
-Environment=FMO_MQTT_HOST=127.0.0.1
-Environment=FMO_MQTT_PORT=1884
-Environment=FMO_TEST_UID=0
-Environment=FMO_TEST_CALLSIGN=N0CALL
-Environment=FMO_AI_CALLSIGN=AI-FMO
-Environment=FMO_ANNOUNCEMENT_NAME=FMO AI测试台
-Environment=FMO_ALLOW_ALL_CALLSIGNS=false
-Environment=FMO_CALLSIGN_BLACKLIST_PATH=/var/lib/fmo-ai-gateway/callsign-blacklist.json
-Environment=FMO_CALLSIGN_STATS_PATH=/var/lib/fmo-ai-gateway/callsign-stats.json
-Environment=FMO_CONTROL_STATE_PATH=/var/lib/fmo-ai-gateway/control-state.json
-Environment=FMO_PERSONA_STATE_PATH=/var/lib/fmo-ai-gateway/persona-state.json
-Environment=FMO_VOICE_CONTROL_CALLSIGN=
-Environment=FMO_VOICE_CONTROL_MATCH_THRESHOLD=0.75
-Environment=FMO_AUTO_REPLY_MATCH_THRESHOLD=0.60
-Environment=FMO_PTT_END_GAP_SECONDS=0.9
-Environment=FMO_MQTT_STATE_PATH=/run/fmo-ai-mqtt/status.json
-Environment=FMO_AUDIO_DIR=/var/lib/fmo-ai-gateway/audio
-Environment=FMO_VOICE_AUTO_ENABLED=false
-Environment=FMO_VOICE_MAX_INPUT_MS=60000
-Environment=FMO_VOICE_MAX_REPLY_MS=45000
-Environment=FMO_PTT_LEAD_IN_MS=480
-Environment=FMO_AUDIO_FADE_IN_MS=80
-Environment=FMO_PTT_TAIL_MS=120
-Environment=DASHSCOPE_TTS_SAMPLE_RATE=16000
-Environment=FMO_HOURLY_ANNOUNCEMENT_ENABLED=false
-Environment=FMO_HOURLY_ANNOUNCEMENT_TIMEZONE=Asia/Shanghai
-Environment=FMO_HOURLY_ANNOUNCEMENT_FIRST_HOUR=7
-Environment=FMO_HOURLY_ANNOUNCEMENT_LAST_HOUR=23
-Environment=FMO_HOURLY_ANNOUNCEMENT_IDLE_SECONDS=30
-Environment=FMO_HOURLY_ANNOUNCEMENT_GRACE_SECONDS=90
-Environment=FMO_HOURLY_ANNOUNCEMENT_STATE_PATH=/var/lib/fmo-ai-gateway/hourly-announcement.json
-Environment=FMO_GATEWAY_CONFIG_PATH=/etc/fmo-ai-gateway/gateway-config.json
-
 [Install]
 WantedBy=multi-user.target

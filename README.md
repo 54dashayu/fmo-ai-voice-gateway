@@ -39,6 +39,52 @@ FMO客户端
 
 ## 快速开始
 
+### 一键安装包
+
+支持范围：
+
+| Linux发行版 | 架构 | Python |
+|---|---|---|
+| Ubuntu 22.04 / 24.04 | x86_64、ARM64 | 3.10 / 3.12 |
+| Debian 12 | x86_64、ARM64 | 3.11 |
+| Rocky Linux / AlmaLinux 9 | x86_64、ARM64 | 3.11 |
+
+从GitHub Release下载并校验安装包后执行：
+
+```bash
+tar -xzf fmo-ai-voice-gateway-0.1.0.tar.gz
+cd fmo-ai-voice-gateway-0.1.0
+sudo ./scripts/install.sh
+```
+
+安装器会自动：
+
+- 安装Python、venv、pip和libopus依赖。
+- 创建专用 `fmo-ai` 系统用户。
+- 安装到 `/opt/fmo-ai-gateway`。
+- 创建权限受限的环境文件和网关配置。
+- 运行交互式配置向导，安全录入百炼Key、呼号、UID、MQTT与可选NAS。
+- 安装并启动两个systemd服务。
+- 保存Nginx与EMQX配置示例，但不覆盖现有服务配置。
+
+非交互式安装：
+
+```bash
+sudo ./scripts/install.sh --non-interactive
+sudo /opt/fmo-ai-gateway/venv/bin/python /opt/fmo-ai-gateway/scripts/configure.py
+sudo systemctl restart fmo-ai-gateway fmo-ai-mqtt-monitor
+```
+
+安装后诊断：
+
+```bash
+sudo /opt/fmo-ai-gateway/scripts/doctor.sh
+```
+
+安装器不会安装或修改FMO SAS/CA，不会覆盖已有EMQX/Nginx配置，也不会自动开启AI、ASR、TTS、自动回复、报时或真实PTT。
+
+### 从源码验证
+
 详见：
 
 - [架构与安全边界](docs/architecture.md)
@@ -46,6 +92,7 @@ FMO客户端
 - [阿里云部署说明](docs/deployment-aliyun.md)
 - [接口清单](docs/api.md)
 - [验证分级](docs/validation.md)
+- [Linux一键安装器](docs/installer.md)
 
 基础测试：
 

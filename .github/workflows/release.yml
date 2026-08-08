@@ -1,0 +1,25 @@
+name: Release Linux package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build package
+        shell: bash
+        run: python scripts/build_package.py "${GITHUB_REF_NAME#v}"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "$GITHUB_REF_NAME" --notes "Linux one-click installer package. AI, ASR, TTS, scheduled speech and PTT remain disabled after installation. Verify the SHA-256 file before use."
