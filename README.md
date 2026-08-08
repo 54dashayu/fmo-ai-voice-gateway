@@ -4,23 +4,16 @@
 
 > 本仓库默认私有发布。FMO 协议、服务器授权和无线电操作责任仍由部署者自行确认；不得使用 AI 冒充真实持证呼号。
 
-## 🚀 傻瓜化一键安装（推荐）
+## 🚀 一键安装
 
-> [!IMPORTANT]
-> 在Linux服务器上执行下面两条命令即可。脚本会自动查找GitHub最新版本、下载、校验SHA-256、解压并进入中文安装向导，不需要GitHub账号，也不需要手工填写版本号。
+无需登录GitHub，在Linux服务器执行：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/54dashayu/fmo-ai-voice-gateway-installer/main/install.sh -o /tmp/fmo-ai-install.sh
 sh /tmp/fmo-ai-install.sh
 ```
 
-公开安装入口位于 [fmo-ai-voice-gateway-installer](https://github.com/54dashayu/fmo-ai-voice-gateway-installer)。已经取得安装脚本时，只需执行：
-
-```bash
-sh install-from-github.sh
-```
-
-安装程序不会覆盖现有EMQX、SAS/CA、Nginx或MySQL，并且在安装完成后保持AI、ASR、TTS、自动回复、报时和真实PTT全部关闭。
+脚本自动下载最新版、校验SHA-256并启动中文配置向导。它不会覆盖现有EMQX、SAS/CA、Nginx或MySQL，所有AI发射能力安装后默认关闭。详见 [安装说明](docs/installer.md)。
 
 ## 业务链路
 
@@ -55,26 +48,7 @@ FMO客户端
 - 同机EMQX建议使用仅回环可达的独立AI监听端口。
 - 初次部署必须先做只读订阅，再做模拟解析，最后才做约定呼号的真实PTT测试。
 
-## 快速开始
-
-第一次了解本项目，建议先阅读 [项目初衷、目标与实现方案](docs/project-overview.md)。其中用通俗语言说明了项目解决的问题、完整语音链路、各组件职责、部署方式、安全门禁和验收标准。
-
-### 一键安装包
-
-上方“傻瓜化一键安装”是推荐方式。安装包中附带的自动安装脚本也可直接执行：
-
-```bash
-sh install-from-github.sh
-```
-
-无需登录的推荐下载方式：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/54dashayu/fmo-ai-voice-gateway-installer/main/install.sh -o /tmp/fmo-ai-install.sh
-sh /tmp/fmo-ai-install.sh
-```
-
-这两条命令只需首次安装时执行；脚本随后会自动下载最新公开Release，不需要登录或手工填写版本号。
+## 安装说明
 
 支持范围：
 
@@ -83,14 +57,6 @@ sh /tmp/fmo-ai-install.sh
 | Ubuntu 22.04 / 24.04 | x86_64、ARM64 | 3.10 / 3.12 |
 | Debian 12 | x86_64、ARM64 | 3.11 |
 | Rocky Linux / AlmaLinux 9 | x86_64、ARM64 | 3.11 |
-
-从GitHub Release下载并校验安装包后执行：
-
-```bash
-tar -xzf fmo-ai-voice-gateway-0.1.2.tar.gz
-cd fmo-ai-voice-gateway-0.1.2
-sh install.sh
-```
 
 安装器会自动：
 
@@ -102,28 +68,17 @@ sh install.sh
 - 安装并启动两个systemd服务。
 - 保存Nginx与EMQX配置示例，但不覆盖现有服务配置。
 
-非交互式安装：
-
-```bash
-sh install.sh --non-interactive
-sudo /opt/fmo-ai-gateway/venv/bin/python /opt/fmo-ai-gateway/scripts/configure.py
-sudo systemctl restart fmo-ai-gateway fmo-ai-mqtt-monitor
-```
-
 安装后诊断：
 
 ```bash
 sudo /opt/fmo-ai-gateway/scripts/doctor.sh
 ```
 
-安装器不会安装或修改FMO SAS/CA，不会覆盖已有EMQX/Nginx配置，也不会自动开启AI、ASR、TTS、自动回复、报时或真实PTT。
+## 进一步了解
 
-### 从源码验证
-
-详见：
+第一次了解本项目，建议先阅读 [项目初衷、目标与实现方案](docs/project-overview.md)。其他文档：
 
 - [架构与安全边界](docs/architecture.md)
-- [项目初衷、目标与实现方案](docs/project-overview.md)
 - [配置字段说明](docs/configuration.md)
 - [阿里云部署说明](docs/deployment-aliyun.md)
 - [接口清单](docs/api.md)
