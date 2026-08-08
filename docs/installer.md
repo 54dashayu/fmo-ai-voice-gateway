@@ -1,5 +1,23 @@
 # Linux一键安装器
 
+## 推荐：无需登录，自动从GitHub下载安装
+
+在Linux服务器复制执行以下两条命令：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/54dashayu/fmo-ai-voice-gateway-installer/main/install.sh -o /tmp/fmo-ai-install.sh
+sh /tmp/fmo-ai-install.sh
+```
+
+公开安装入口：[fmo-ai-voice-gateway-installer](https://github.com/54dashayu/fmo-ai-voice-gateway-installer)
+
+此方式不需要GitHub账号、`gh auth login` 或Token。脚本会自动查询最新公开Release，下载压缩包及SHA-256文件，校验通过后解压并进入中文配置向导。
+
+> [!IMPORTANT]
+> SHA-256校验失败时脚本会立即停止。安装完成后AI、ASR、TTS、自动回复、定时报时和真实PTT仍然保持关闭。
+
+## 已经手工下载安装包
+
 下载并解压安装包后，普通用户只需执行：
 
 ```bash
@@ -8,13 +26,7 @@ sh install.sh
 
 根目录脚本会自动检查Linux环境并申请sudo权限，然后调用正式安装器。
 
-如果服务器上只有GitHub自动安装脚本，可执行：
-
-```bash
-sh install-from-github.sh
-```
-
-该脚本自动查询最新Release、下载压缩包和SHA-256文件、完成校验和解压，然后进入安装向导。私有仓库需要已登录的GitHub CLI或只读 `GITHUB_TOKEN`。
+安装包中的 `install-from-github.sh` 也已经指向同一个公开安装仓库，不再要求登录私有源码仓库。
 
 ## 安装内容
 
