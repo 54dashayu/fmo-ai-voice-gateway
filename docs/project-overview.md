@@ -11,18 +11,17 @@ FMO AI Voice Gateway 是连接 **FMO MQTT语音服务器** 和 **阿里云百炼
 > [!IMPORTANT]
 > 本项目提供GitHub自动安装脚本。它会自动获取最新Release、下载压缩包和SHA-256文件、校验完整性、解压并启动中文配置向导。
 
-当前仓库是私有仓库，在Linux服务器执行：
+在Linux服务器执行以下两条命令，无需登录GitHub：
 
 ```bash
-gh auth login
-gh api -H "Accept: application/vnd.github.raw+json" repos/54dashayu/fmo-ai-voice-gateway/contents/install-from-github.sh > /tmp/fmo-ai-install.sh
+curl -fsSL https://raw.githubusercontent.com/54dashayu/fmo-ai-voice-gateway-installer/main/install.sh -o /tmp/fmo-ai-install.sh
 sh /tmp/fmo-ai-install.sh
 ```
 
-如果已经把 `install-from-github.sh` 放到服务器，只需一条命令：
+如果已经把公开安装脚本放到服务器，只需一条命令：
 
 ```bash
-sh install-from-github.sh
+sh install.sh
 ```
 
 安装结束后不会自动开放真实语音发射。管理员仍需按照本文后面的只读、模拟和真实PTT三个阶段完成验证。

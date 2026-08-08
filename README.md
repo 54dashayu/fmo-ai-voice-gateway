@@ -7,15 +7,14 @@
 ## 🚀 傻瓜化一键安装（推荐）
 
 > [!IMPORTANT]
-> 在Linux服务器上执行下面三条命令即可。脚本会自动查找GitHub最新版本、下载、校验SHA-256、解压并进入中文安装向导，不需要手工填写版本号。
+> 在Linux服务器上执行下面两条命令即可。脚本会自动查找GitHub最新版本、下载、校验SHA-256、解压并进入中文安装向导，不需要GitHub账号，也不需要手工填写版本号。
 
 ```bash
-gh auth login
-gh api -H "Accept: application/vnd.github.raw+json" repos/54dashayu/fmo-ai-voice-gateway/contents/install-from-github.sh > /tmp/fmo-ai-install.sh
+curl -fsSL https://raw.githubusercontent.com/54dashayu/fmo-ai-voice-gateway-installer/main/install.sh -o /tmp/fmo-ai-install.sh
 sh /tmp/fmo-ai-install.sh
 ```
 
-仓库目前是私有仓库，因此第一次需要登录GitHub。已经取得 `install-from-github.sh` 文件时，只需执行：
+公开安装入口位于 [fmo-ai-voice-gateway-installer](https://github.com/54dashayu/fmo-ai-voice-gateway-installer)。已经取得安装脚本时，只需执行：
 
 ```bash
 sh install-from-github.sh
@@ -68,17 +67,14 @@ FMO客户端
 sh install-from-github.sh
 ```
 
-仓库为私有状态时，服务器需要先执行 `gh auth login`，或者临时设置具有该仓库只读权限的 `GITHUB_TOKEN`。脚本不会显示或保存Token。公开仓库可直接匿名执行。
-
-私有仓库可用GitHub CLI把自动安装脚本直接拉到Linux服务器：
+无需登录的推荐下载方式：
 
 ```bash
-gh auth login
-gh api -H "Accept: application/vnd.github.raw+json" repos/54dashayu/fmo-ai-voice-gateway/contents/install-from-github.sh > /tmp/fmo-ai-install.sh
+curl -fsSL https://raw.githubusercontent.com/54dashayu/fmo-ai-voice-gateway-installer/main/install.sh -o /tmp/fmo-ai-install.sh
 sh /tmp/fmo-ai-install.sh
 ```
 
-这三条命令只需首次安装时执行；脚本随后会自动下载最新Release，不需要手工填写版本号。
+这两条命令只需首次安装时执行；脚本随后会自动下载最新公开Release，不需要登录或手工填写版本号。
 
 支持范围：
 
