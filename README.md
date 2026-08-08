@@ -74,18 +74,9 @@ FMO客户端
 sudo /opt/fmo-ai-gateway/scripts/doctor.sh
 ```
 
-## 进一步了解
+项目的设计背景、目标和完整技术路径见 [项目初衷、目标与实现方案](docs/project-overview.md)。
 
-第一次了解本项目，建议先阅读 [项目初衷、目标与实现方案](docs/project-overview.md)。其他文档：
-
-- [架构与安全边界](docs/architecture.md)
-- [配置字段说明](docs/configuration.md)
-- [阿里云部署说明](docs/deployment-aliyun.md)
-- [接口清单](docs/api.md)
-- [验证分级](docs/validation.md)
-- [Linux一键安装器](docs/installer.md)
-
-基础测试：
+## 开发验证
 
 ```bash
 cd ai-gateway
