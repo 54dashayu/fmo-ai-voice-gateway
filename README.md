@@ -55,6 +55,176 @@ python3 -m unittest discover -p 'test_*.py' -v
 python3 gateway.py --callsign YOUR_CALLSIGN --text 测试 --validate-only
 ```
 
+## 配置总览
+
+配置分为两层：
+
+1. `/etc/fmo-ai-gateway.env`：密钥、Token、呼号和安全门禁等服务器环境变量。
+2. `/etc/fmo-ai-gateway/gateway-config.json`：网页可编辑的百炼模型、MQTT和可选NAS知识库设置。
+
+真实凭据只能保存在服务器权限受限的文件中，建议所有者为专用 `fmo-ai` 用户、文件权限为 `0600`。不要把生产配置复制回Git仓库。
+
+### 最小必填项
+
+```text
+DASHSCOPE_API_KEY=YOUR_BAILIAN_API_KEY
+FMO_GATEWAY_TOKEN=YOUR_RANDOM_GATEWAY_TOKEN
+FMO_STATION_CALLSIGN=YOUR_CALLSIGN
+FMO_AI_CALLSIGN=AI-YOUR-STATION
+FMO_TEST_UID=YOUR_SERVER_UID
+FMO_ALLOWED_CALLSIGNS=YOUR_TEST_CALLSIGN
+```
+
+首次启动时继续保持：
+
+```text
+FMO_AI_ENABLED=false
+FMO_ASR_ENABLED=false
+FMO_TTS_ENABLED=false
+FMO_VOICE_AUTO_ENABLED=false
+FMO_HOURLY_ANNOUNCEMENT_ENABLED=false
+```
+
+这些开关必须经过分级验证后逐项开启，不能因为健康页面显示正常就直接启用PTT。
+
+## 阿里云百炼配置
+
+本项目的全部AI能力统一使用阿里云百炼 DashScope。
+
+| 能力 | 默认模型 | 用途 | 是否必需 |
+|---|---|---|---|
+| Chat | `qwen-plus` | 普通聊天、知识回答与通联话术 | 是 |
+| ASR | `qwen3-asr-flash` | 将FMO呼入语音转成文字 | 语音问答时必需 |
+| TTS | `cosyvoice-v3-flash` | 将模型回复合成为语音 | 语音回复时必需 |
+| Embedding | `text-embedding-v4` | NAS知识库向量检索 | 仅启用NAS时需要 |
+
+标准百炼兼容端点示例：
+
+```text
+https://dashscope.aliyuncs.com/compatible-mode/v1
+```
+
+也可以填写同一百炼业务空间分配的专用Endpoint。Provider必须保持 `dashscope`，后端会拒绝其他模型供应商。
+
+API Key输入框遵循以下规则：
+
+- “已配置”表示服务器已经有Key，但页面不会返回明文。
+- 留空保存表示保留原Key。
+- 只有首次配置或轮换Key时才输入新值。
+- 不要把百炼API Key复用为MQTT密码、NAS Token或网页密码。
+
+## MQTT配置
+
+### AI和EMQX部署在同一台服务器
+
+推荐使用独立的回环监听器：
+
+```text
+host: 127.0.0.1
+port: 1884
+topic: FMO/RAW
+client_id: FMO-AI-MONITOR-YOUR-STATION
+```
+
+这种情况下通常不需要MQTT用户名、密码或TLS，因为数据只在服务器内部回环网络传输。`deploy/emqx-ai-loopback.conf` 提供了仅允许本机连接的示例。
+
+### AI连接远程FMO MQTT服务器
+
+需要由目标服务器所有者提供并确认：
+
+| 字段 | 含义 |
+|---|---|
+| Host | 目标Broker的公网、专网地址或域名 |
+| Port | 目标Broker提供的MQTT端口 |
+| Topic | FMO语音主题，通常需要确认是否为 `FMO/RAW` |
+| Client ID | MQTT连接唯一标识，不是账号或真实呼号 |
+| Username/Password | 目标Broker的客户端鉴权账号，仅在对方要求时填写 |
+| TLS/CA/客户端证书 | 目标Broker要求加密或双向证书认证时填写 |
+
+远程服务器还必须给AI客户端最小ACL：只允许订阅和发布约定的FMO语音主题。不要对全部MQTT Topic授予 `#` 权限。
+
+## NAS知识库配置（可选）
+
+管理页面采用“先开启、再配置”的两层交互。
+
+### 不使用NAS
+
+```text
+FMO_KB_ENABLED=false
+FMO_KB_ADMIN_TOKEN=
+```
+
+关闭后：
+
+- 不连接或探测NAS地址。
+- 不调用Embedding模型。
+- 普通聊天、ASR和TTS继续工作。
+- 无法从私有资料回答的知识问题使用百炼联网回答。
+
+### 使用NAS
+
+先部署 `nas-knowledge-service/`，然后在管理页面开启“使用NAS知识库”，再配置：
+
+| 字段 | 示例 | 含义 |
+|---|---|---|
+| NAS知识服务地址 | `http://127.0.0.1:18787` | AI网关访问知识服务的地址；可由SSH反向隧道映射到回环端口 |
+| Token环境变量 | `FMO_KB_ADMIN_TOKEN` | 存放Token的环境变量名称，不是Token内容 |
+| 独立访问Token | 随机保密值 | AI网关与NAS知识服务之间的认证凭据 |
+| 单次检索条数 | `3` | 每次最多交给模型的相关知识片段数量 |
+| 请求超时 | `8`秒 | NAS在该时间内未响应则视为本次访问失败 |
+
+独立Token需要同时配置在NAS知识服务和AI网关，两端内容必须一致。它不能使用百炼API Key，也不得提交到Git。页面显示“留空不改（已配置）”时表示现有Token有效，日常保存无需重新输入。
+
+## 呼号与AI身份
+
+| 变量 | 说明 |
+|---|---|
+| `FMO_STATION_CALLSIGN` | 服务器管理员或测试站呼号 |
+| `FMO_AI_CALLSIGN` | AI发言标识，必须与真人用户清晰区分 |
+| `FMO_TEST_UID` | 服务器或约定测试UID |
+| `FMO_ALLOWED_CALLSIGNS` | 初次测试允许触发AI的呼号列表 |
+| `FMO_ALLOW_ALL_CALLSIGNS` | 是否改用“所有呼号允许、黑名单排除”模式 |
+| `FMO_VOICE_CONTROL_CALLSIGN` | 可执行管理员语音命令的呼号 |
+| `FMO_ANNOUNCEMENT_NAME` | 整点播报和标准通联时使用的AI台站名称 |
+
+AI发言标识不得与当前在线真实用户相同，不得声称自己拥有真实个人身份、执照、RST、QTH、设备或功率信息。
+
+## 语音与PTT参数
+
+| 参数 | 推荐初值 | 说明 |
+|---|---:|---|
+| `FMO_PTT_END_GAP_SECONDS` | `0.9` | 松开PTT后判断一轮语音结束的静音间隔 |
+| `FMO_VOICE_MAX_INPUT_MS` | `60000` | 单次真人呼入最长60秒 |
+| `FMO_VOICE_MAX_REPLY_MS` | `45000` | AI单次语音回复最长45秒 |
+| `FMO_PTT_LEAD_IN_MS` | `480` | 发射后正式语音前的保护静音，避免削首字 |
+| `FMO_AUDIO_FADE_IN_MS` | `80` | 回复音频淡入时间 |
+| `FMO_PTT_TAIL_MS` | `120` | 语音结束后的PTT保持时间 |
+
+参数应通过真实接收端试听调整。MQTT发布成功不等于对方已经听到完整回复。
+
+## 配置保存与生效
+
+网页读取接口只返回脱敏数据。密码、API Key和Token输入框留空表示保持原值。
+
+配置保存后，模型网关和MQTT监听需要重新加载：
+
+```bash
+sudo systemctl restart fmo-ai-gateway
+sudo systemctl restart fmo-ai-mqtt-monitor
+```
+
+重启前应确认频道空闲。模型配置或NAS开关变更不会自动授权真实PTT；PTT仍受独立环境开关和网页业务开关控制。
+
+## 推荐验收顺序
+
+1. 只读检查现有EMQX、SAS、Nginx和业务服务状态。
+2. 保持PTT关闭，验证MQTT连接、Topic和FMO帧解析。
+3. 执行百炼文本输入到文本回复验证。
+4. 执行离线ASR、LLM、TTS闭环，不发布MQTT语音。
+5. 若启用NAS，验证健康检查、文件列表和一次知识命中。
+6. 由服务器所有者授权，仅约定呼号进行短促真实PTT测试。
+7. 以另一台FMO实际听到完整AI语音作为验收证据。
+
 ## 目录
 
 ```text
