@@ -39,6 +39,8 @@ FMO客户端
 
 ## 快速开始
 
+第一次了解本项目，建议先阅读 [项目初衷、目标与实现方案](docs/project-overview.md)。其中用通俗语言说明了项目解决的问题、完整语音链路、各组件职责、部署方式、安全门禁和验收标准。
+
 ### 一键安装包
 
 直接从GitHub自动获取最新版并安装：
@@ -106,6 +108,7 @@ sudo /opt/fmo-ai-gateway/scripts/doctor.sh
 详见：
 
 - [架构与安全边界](docs/architecture.md)
+- [项目初衷、目标与实现方案](docs/project-overview.md)
 - [配置字段说明](docs/configuration.md)
 - [阿里云部署说明](docs/deployment-aliyun.md)
 - [接口清单](docs/api.md)
