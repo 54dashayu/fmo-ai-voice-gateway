@@ -6,6 +6,27 @@ FMO AI Voice Gateway 是连接 **FMO MQTT语音服务器** 和 **阿里云百炼
 
 它不改变FMO原有客户端、服务器和SAS/CA鉴权体系，而是在服务器旁边增加一个受控的“AI电台值守员”：听取频道中的语音，理解问题，生成回答，再在频道空闲时用语音回复。
 
+## 🚀 最简单的安装方法
+
+> [!IMPORTANT]
+> 本项目提供GitHub自动安装脚本。它会自动获取最新Release、下载压缩包和SHA-256文件、校验完整性、解压并启动中文配置向导。
+
+当前仓库是私有仓库，在Linux服务器执行：
+
+```bash
+gh auth login
+gh api -H "Accept: application/vnd.github.raw+json" repos/54dashayu/fmo-ai-voice-gateway/contents/install-from-github.sh > /tmp/fmo-ai-install.sh
+sh /tmp/fmo-ai-install.sh
+```
+
+如果已经把 `install-from-github.sh` 放到服务器，只需一条命令：
+
+```bash
+sh install-from-github.sh
+```
+
+安装结束后不会自动开放真实语音发射。管理员仍需按照本文后面的只读、模拟和真实PTT三个阶段完成验证。
+
 ## 为什么要做这个项目
 
 传统FMO语音服务器主要解决三件事：用户登录、语音转发和通话管理。它能让不同地点的真实FMO用户进入同一服务器交流，但本身不会理解谈话内容，也不能自动回答问题。

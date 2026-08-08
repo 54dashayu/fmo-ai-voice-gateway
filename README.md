@@ -4,6 +4,25 @@
 
 > 本仓库默认私有发布。FMO 协议、服务器授权和无线电操作责任仍由部署者自行确认；不得使用 AI 冒充真实持证呼号。
 
+## 🚀 傻瓜化一键安装（推荐）
+
+> [!IMPORTANT]
+> 在Linux服务器上执行下面三条命令即可。脚本会自动查找GitHub最新版本、下载、校验SHA-256、解压并进入中文安装向导，不需要手工填写版本号。
+
+```bash
+gh auth login
+gh api -H "Accept: application/vnd.github.raw+json" repos/54dashayu/fmo-ai-voice-gateway/contents/install-from-github.sh > /tmp/fmo-ai-install.sh
+sh /tmp/fmo-ai-install.sh
+```
+
+仓库目前是私有仓库，因此第一次需要登录GitHub。已经取得 `install-from-github.sh` 文件时，只需执行：
+
+```bash
+sh install-from-github.sh
+```
+
+安装程序不会覆盖现有EMQX、SAS/CA、Nginx或MySQL，并且在安装完成后保持AI、ASR、TTS、自动回复、报时和真实PTT全部关闭。
+
 ## 业务链路
 
 ```text
@@ -43,7 +62,7 @@ FMO客户端
 
 ### 一键安装包
 
-直接从GitHub自动获取最新版并安装：
+上方“傻瓜化一键安装”是推荐方式。已经下载自动安装脚本时可直接执行：
 
 ```bash
 sh install-from-github.sh
