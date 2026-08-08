@@ -52,9 +52,9 @@ FMO客户端
 从GitHub Release下载并校验安装包后执行：
 
 ```bash
-tar -xzf fmo-ai-voice-gateway-0.1.0.tar.gz
-cd fmo-ai-voice-gateway-0.1.0
-sudo ./scripts/install.sh
+tar -xzf fmo-ai-voice-gateway-0.1.1.tar.gz
+cd fmo-ai-voice-gateway-0.1.1
+sh install.sh
 ```
 
 安装器会自动：
@@ -70,7 +70,7 @@ sudo ./scripts/install.sh
 非交互式安装：
 
 ```bash
-sudo ./scripts/install.sh --non-interactive
+sh install.sh --non-interactive
 sudo /opt/fmo-ai-gateway/venv/bin/python /opt/fmo-ai-gateway/scripts/configure.py
 sudo systemctl restart fmo-ai-gateway fmo-ai-mqtt-monitor
 ```

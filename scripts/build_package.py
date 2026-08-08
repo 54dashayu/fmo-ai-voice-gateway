@@ -8,7 +8,7 @@ import tarfile
 from pathlib import Path
 
 
-INCLUDED = ("README.md", "SECURITY.md", "VERSION", "ai-gateway", "nas-knowledge-service", "deploy", "docs", "scripts")
+INCLUDED = ("README.md", "SECURITY.md", "VERSION", "install.sh", "ai-gateway", "nas-knowledge-service", "deploy", "docs", "scripts")
 EXCLUDED_PARTS = {".git", "dist", "__pycache__", "data", "audio", "runtime", "capture-output"}
 EXCLUDED_SUFFIXES = (".pyc", ".pyo", ".key", ".pem", ".wav", ".pcap", ".pcapng")
 
@@ -42,7 +42,7 @@ def build(root: Path, version: str) -> tuple[Path, Path]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("version", nargs="?", default="0.1.0")
+    parser.add_argument("version", nargs="?", default=(Path(__file__).resolve().parent.parent / "VERSION").read_text(encoding="utf-8").strip())
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     archive, checksum = build(root, args.version)
