@@ -12,7 +12,7 @@ h1{font-size:clamp(34px,6vw,64px);line-height:1;margin:0}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .grid article,.panel{background:linear-gradient(145deg,rgba(20,36,48,.95),rgba(12,24,33,.95));border:1px solid var(--line);border-radius:16px}
 .grid article{padding:22px;min-height:145px;display:flex;flex-direction:column}
-.clickable-card{cursor:pointer;transition:border-color .18s,transform .18s,box-shadow .18s}.clickable-card:hover,.clickable-card:focus-visible{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(68,215,232,.12);outline:0;transform:translateY(-2px)}
+.clickable-card{cursor:pointer;transition:border-color .18s,transform .18s,box-shadow .18s}.clickable-card:hover,.clickable-card:focus-visible{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(68,215,232,.12);outline:0;transform:translateY(-2px)}.clickable-card.disabled-card{cursor:default;opacity:.68}.clickable-card.disabled-card:hover{border-color:var(--line);box-shadow:none;transform:none}
 .grid span,.grid small,.stats span,footer,.hint{color:var(--muted)}
 .grid strong{font-size:23px;margin:auto 0 8px;overflow-wrap:anywhere}
 .panel{padding:24px;margin-top:14px}

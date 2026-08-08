@@ -9,6 +9,7 @@ let knowledgePath='';
 let blacklistValues=[];
 let blacklistLoaded=false;
 let gatewayConfigLoading=false;
+let knowledgeEnabled=false;
 let providerConfigLoading=false;
 const numericCallsignColumns=new Set(['heard','answered','blocked','last_at']);
 const gatewayDefaultConfig={mqtt_servers:[],providers:{chat:{provider:'dashscope',base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'qwen-plus',api_key_env:'DASHSCOPE_API_KEY',has_api_key:false},embedding:{provider:'dashscope',base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'text-embedding-v4',api_key_env:'DASHSCOPE_API_KEY',has_api_key:false},asr:{provider:'dashscope',base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'qwen3-asr-flash',api_key_env:'DASHSCOPE_ASR_API_KEY',has_api_key:false},tts:{provider:'dashscope',base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'cosyvoice-v3-flash',api_key_env:'DASHSCOPE_TTS_API_KEY',has_api_key:false}}};
@@ -124,7 +125,11 @@ async function refresh(){
     const d=await response.json(),g=d.gateway,p=d.policy;
     $('overall').textContent='运行正常';$('overall').className='pill ok';
     $('gateway').textContent='在线';$('uptime').textContent=`已运行 ${age(Math.max(0,Math.floor(Date.now()/1000)-g.started_at))}`;
-    $('nas').textContent=d.nas.ok?'在线':'不可达';$('sections').textContent=(d.nas.sections==null?'切片数未知':`${d.nas.sections} 个知识切片`)+' · 点击管理';
+    knowledgeEnabled=Boolean(d.nas.enabled);
+    $('nas-card').classList.toggle('disabled-card',!knowledgeEnabled);
+    $('nas-card').setAttribute('aria-disabled',knowledgeEnabled?'false':'true');
+    $('nas').textContent=!knowledgeEnabled?'未启用':(d.nas.ok?'在线':'不可达');
+    $('sections').textContent=!knowledgeEnabled?'普通聊天与百炼联网问答仍可使用':((d.nas.sections==null?'切片数未知':`${d.nas.sections} 个知识切片`)+' · 点击管理');
     $('chat-model').textContent=d.models.chat;$('embedding-model').textContent=d.models.embedding;
     $('requests').textContent=g.requests_total;$('chat-count').textContent=g.chat_total;$('knowledge-count').textContent=g.knowledge_total;$('last-result').textContent=g.last_result;
     const w=d.watchdog||{},c=w.checks||{};
@@ -170,7 +175,7 @@ async function loadKnowledgeOverview(){try{const r=await fetch('api/knowledge/ov
 async function loadKnowledgeFiles(path=knowledgePath){knowledgePath=path;renderBreadcrumb();try{const r=await fetch(`api/knowledge/files?path=${encodeURIComponent(path)}`,{headers:{'X-FMO-Admin':'1'},cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d.error||'目录读取失败');const entries=(d.entries||[]).filter(x=>x.name!=='@eaDir');$('kb-file-list').innerHTML=entries.length?entries.map(x=>`<tr><td>${x.type==='directory'?`<button class="file-link" type="button" data-path="${escapeHtml(x.path)}">📁 ${escapeHtml(x.name)}</button>`:escapeHtml(x.name)}</td><td>${x.type==='directory'?'目录':'文件'}</td><td>${x.type==='directory'?'—':formatBytes(x.size)}</td><td>${new Date(x.modified_at*1000).toLocaleString('zh-CN',{hour12:false})}</td><td>${x.type==='directory'?'—':(x.indexed_sections>0?`已入库 · ${x.indexed_sections}片`:'待入库')}</td></tr>`).join(''):'<tr><td colspan="5">目录为空</td></tr>';$('kb-file-list').querySelectorAll('.file-link').forEach(b=>b.addEventListener('click',()=>loadKnowledgeFiles(b.dataset.path)))}catch(e){$('kb-file-list').innerHTML=`<tr><td colspan="5">${escapeHtml(e.message)}</td></tr>`}}
 const bytesToBase64=buffer=>{const bytes=new Uint8Array(buffer);let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(binary)};
 async function uploadKnowledge(){const files=[...$('kb-upload-files').files];if(!files.length){$('kb-result').textContent='请先选择文件';return}const button=$('kb-upload-button');button.disabled=true;try{for(let fileIndex=0;fileIndex<files.length;fileIndex++){const file=files[fileIndex];if(file.size>100*1024*1024)throw new Error(`${file.name} 超过100MB`);const uploadId=[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('');let offset=0;while(offset<file.size){const end=Math.min(file.size,offset+512*1024),chunk=bytesToBase64(await file.slice(offset,end).arrayBuffer());const r=await fetch('api/knowledge/upload',{method:'POST',headers:{'Content-Type':'application/json','X-FMO-Admin':'1'},body:JSON.stringify({path:knowledgePath,name:file.name,upload_id:uploadId,offset,total_size:file.size,chunk})}),d=await r.json();if(!r.ok)throw new Error(d.error||`${file.name} 上传失败`);offset=end;$('kb-upload-progress').style.width=`${Math.round(((fileIndex+offset/file.size)/files.length)*100)}%`}$('kb-result').textContent=`已上传 ${fileIndex+1}/${files.length}：${file.name}`}$('kb-upload-files').value='';await Promise.all([loadKnowledgeFiles(),loadKnowledgeOverview()])}catch(e){$('kb-result').textContent=`上传失败：${e.message}`}finally{button.disabled=false;setTimeout(()=>{$('kb-upload-progress').style.width='0'},1500)}}
-function openKnowledge(){const overlay=$('knowledge-overlay');overlay.hidden=false;document.body.classList.add('modal-open');loadKnowledgeOverview();loadKnowledgeFiles();$('knowledge-close').focus()}
+function openKnowledge(){if(!knowledgeEnabled)return;const overlay=$('knowledge-overlay');overlay.hidden=false;document.body.classList.add('modal-open');loadKnowledgeOverview();loadKnowledgeFiles();$('knowledge-close').focus()}
 function closeKnowledge(){const overlay=$('knowledge-overlay');overlay.hidden=true;document.body.classList.remove('modal-open');$('nas-card').focus()}
 function openBlacklist(){const overlay=$('blacklist-overlay');overlay.hidden=false;document.body.classList.add('modal-open');$('blacklist-dialog-result').textContent='';loadBlacklist();$('blacklist-close').focus()}
 function closeBlacklist(){const overlay=$('blacklist-overlay');overlay.hidden=true;document.body.classList.remove('modal-open');$('blacklist-open').focus()}

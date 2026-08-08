@@ -92,6 +92,8 @@ def watchdog_state() -> dict:
 
 
 def knowledge_admin_request(path: str, method: str = "GET", body: dict | None = None) -> dict:
+    if not flag("FMO_KB_ENABLED"):
+        raise RuntimeError("NAS knowledge service is disabled")
     token = os.getenv("FMO_KB_ADMIN_TOKEN", "")
     if not token:
         raise RuntimeError("NAS knowledge token is not configured")
@@ -187,14 +189,16 @@ class Handler(BaseHTTPRequestHandler):
             gateway_status["requests_total"] += mqtt.get("chat_total", 0) + mqtt.get("knowledge_total", 0)
             if mqtt.get("last_voice"):
                 gateway_status["last_result"] = mqtt["last_voice"].get("result", gateway_status["last_result"])
-            nas = {"ok": False, "sections": None}
-            try:
-                kb_base = os.getenv("FMO_KB_BASE_URL", "http://127.0.0.1:18787").rstrip("/")
-                with urllib.request.urlopen(f"{kb_base}/health", timeout=3) as response:
-                    value = json.load(response)
-                nas = {"ok": bool(value.get("ok")), "sections": value.get("sections")}
-            except (OSError, ValueError, urllib.error.URLError):
-                pass
+            kb_enabled = flag("FMO_KB_ENABLED")
+            nas = {"enabled": kb_enabled, "ok": False, "sections": None}
+            if kb_enabled:
+                try:
+                    kb_base = os.getenv("FMO_KB_BASE_URL", "http://127.0.0.1:18787").rstrip("/")
+                    with urllib.request.urlopen(f"{kb_base}/health", timeout=3) as response:
+                        value = json.load(response)
+                    nas = {"enabled": True, "ok": bool(value.get("ok")), "sections": value.get("sections")}
+                except (OSError, ValueError, urllib.error.URLError):
+                    pass
             self.send_json(200, {
                 "ok": True,
                 "gateway": gateway_status,
@@ -218,6 +222,7 @@ class Handler(BaseHTTPRequestHandler):
                     "asr": flag("FMO_ASR_ENABLED"),
                     "tts": flag("FMO_TTS_ENABLED"),
                     "ptt": mqtt["ptt_enabled"],
+                    "knowledge": kb_enabled,
                 },
                 "mqtt": mqtt,
                 "watchdog": watchdog,

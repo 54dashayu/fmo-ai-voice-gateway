@@ -76,6 +76,10 @@ def allow_all_callsigns() -> bool:
     return os.getenv("FMO_ALLOW_ALL_CALLSIGNS", "false").lower() == "true"
 
 
+def knowledge_enabled() -> bool:
+    return os.getenv("FMO_KB_ENABLED", "false").lower() == "true"
+
+
 def _provider_headers() -> dict:
     provider = gateway_config.provider("chat")
     provider_name = str(provider.get("provider", "dashi"))
@@ -245,6 +249,8 @@ def embed_text(text: str) -> list[float]:
 
 
 def search_knowledge(text: str) -> list[dict]:
+    if not knowledge_enabled():
+        return []
     token = os.getenv("FMO_KB_ADMIN_TOKEN")
     if not token:
         raise RuntimeError("FMO_KB_ADMIN_TOKEN is not set")
@@ -276,7 +282,7 @@ def call_model(
 def answer(callsign: str, text: str) -> dict:
     validate_input(callsign, text)
     mode, routed_text = route_mode(text)
-    knowledge = search_knowledge(routed_text) if mode == "knowledge" else []
+    knowledge = search_knowledge(routed_text) if mode == "knowledge" and knowledge_enabled() else []
     if mode == "knowledge" and not knowledge:
         reply = call_model(callsign, routed_text, [], mode, web_search=True)
         _record(mode, "web_search_success")

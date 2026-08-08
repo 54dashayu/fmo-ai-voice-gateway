@@ -77,7 +77,7 @@ class GatewaySafetyTests(unittest.TestCase):
     def test_knowledge_search_filters_unrelated_vector_matches(self):
         env = {
             "DASHSCOPE_API_KEY": "test", "FMO_KB_ADMIN_TOKEN": "test",
-            "FMO_KB_MIN_SCORE": "0.55",
+            "FMO_KB_MIN_SCORE": "0.55", "FMO_KB_ENABLED": "true",
         }
         response = {"results": [
             {"score": 0.81, "title": "相关资料"},
@@ -102,6 +102,20 @@ class GatewaySafetyTests(unittest.TestCase):
             result = gateway.answer("BH1JSS", "FMO仪表盘怎么使用")
         self.assertEqual(result["fallback"], "bailian_web_search")
         self.assertEqual(result["sources"][0]["title"], "阿里百炼联网搜索")
+        self.assertTrue(call_model.call_args.kwargs["web_search"])
+
+    def test_disabled_knowledge_does_not_require_nas(self):
+        env = {
+            "FMO_AI_ENABLED": "true",
+            "FMO_ALLOWED_CALLSIGNS": "BH1JSS",
+            "DASHSCOPE_API_KEY": "not-a-real-key",
+            "FMO_KB_ENABLED": "false",
+        }
+        with patch.dict(os.environ, env, clear=True), patch.object(
+            gateway, "search_knowledge", side_effect=AssertionError("NAS must not be called")
+        ), patch.object(gateway, "call_model", return_value="联网回答") as call_model:
+            result = gateway.answer("BH1JSS", "天线驻波是什么")
+        self.assertEqual(result["fallback"], "bailian_web_search")
         self.assertTrue(call_model.call_args.kwargs["web_search"])
 
     def test_web_search_payload_is_only_enabled_for_fallback(self):

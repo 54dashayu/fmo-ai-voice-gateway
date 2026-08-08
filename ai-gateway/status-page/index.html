@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>FMO AI 服务状态</title>
-  <link rel="stylesheet" href="style.css?v=20260808-client-id-v9">
+  <link rel="stylesheet" href="style.css?v=20260808-optional-kb-v10">
 </head>
 <body>
   <main>
@@ -20,7 +20,7 @@
 
     <section class="grid">
       <article><span>AI 网关</span><strong id="gateway">—</strong><small id="uptime">—</small></article>
-      <article id="nas-card" class="clickable-card" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="knowledge-overlay"><span>NAS 知识库</span><strong id="nas">—</strong><small id="sections">— · 点击管理</small></article>
+      <article id="nas-card" class="clickable-card" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="knowledge-overlay"><span>NAS 知识库（可选）</span><strong id="nas">—</strong><small id="sections">—</small></article>
       <article><span>文本模型</span><strong id="chat-model">—</strong><small>阿里云百炼</small></article>
       <article><span>向量模型</span><strong id="embedding-model">—</strong><small>阿里云百炼</small></article>
     </section>
@@ -70,7 +70,7 @@
             <input id="provider-chat-model-simple" maxlength="64" placeholder="qwen-plus">
           </label>
           <label>知识向量模型
-            <input id="provider-embedding-model-simple" maxlength="64" placeholder="text-embedding-v4">
+            <input id="provider-embedding-model-simple" maxlength="64" placeholder="text-embedding-v4（仅知识库启用时使用）">
           </label>
           <label>ASR模型
             <input id="provider-asr-model-simple" maxlength="64" placeholder="qwen3-asr-flash">
@@ -349,6 +349,6 @@
 
     <footer>最后刷新：<span id="updated">—</span> · 每 15 秒自动刷新</footer>
   </main>
-  <script src="app.js?v=20260808-client-id-v9"></script>
+  <script src="app.js?v=20260808-optional-kb-v10"></script>
 </body>
 </html>

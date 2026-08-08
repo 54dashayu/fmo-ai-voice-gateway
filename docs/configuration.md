@@ -39,6 +39,17 @@ FMO_TEST_UID=服务器或测试UID
 
 可改成同一百炼业务空间有权调用的其他模型，但Provider和Endpoint必须仍属于阿里云百炼。
 
+## NAS知识库（可选）
+
+NAS知识库默认关闭。未部署NAS服务时保持：
+
+```text
+FMO_KB_ENABLED=false
+FMO_KB_ADMIN_TOKEN=
+```
+
+普通聊天、ASR、TTS和百炼联网知识回答仍可正常使用，也不会探测NAS地址。需要私有知识库时再部署 `nas-knowledge-service/`，设置独立Token并改为 `FMO_KB_ENABLED=true`。
+
 ## 配置生效
 
 网页保存写入 `gateway-config.json`。模型网关与MQTT监听在启动时加载配置，因此修改后需按变更范围重启：
@@ -49,4 +60,3 @@ systemctl restart fmo-ai-mqtt-monitor
 ```
 
 真实发射期间不要重启；应等待频道空闲并通知测试方。
-
