@@ -8,7 +8,7 @@ import tarfile
 from pathlib import Path
 
 
-INCLUDED = ("README.md", "SECURITY.md", "VERSION", "install.sh", "ai-gateway", "nas-knowledge-service", "deploy", "docs", "scripts")
+INCLUDED = ("README.md", "SECURITY.md", "VERSION", "install.sh", "install-from-github.sh", "ai-gateway", "nas-knowledge-service", "deploy", "docs", "scripts")
 EXCLUDED_PARTS = {".git", "dist", "__pycache__", "data", "audio", "runtime", "capture-output"}
 EXCLUDED_SUFFIXES = (".pyc", ".pyo", ".key", ".pem", ".wav", ".pcap", ".pcapng")
 

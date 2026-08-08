@@ -20,6 +20,7 @@ jobs:
       - run: python -m unittest discover -s ai-gateway -p 'test_*.py' -q
       - run: python -m unittest discover -s nas-knowledge-service -p 'test_*.py' -q
       - run: python -m unittest discover -s scripts -p 'test_*.py' -q
+      - run: sh -n install.sh install-from-github.sh
       - run: bash -n scripts/install.sh scripts/doctor.sh
       - run: bash scripts/install.sh --dry-run --skip-packages --non-interactive
       - run: python scripts/build_package.py 0.1.0-ci

@@ -8,6 +8,14 @@ sh install.sh
 
 根目录脚本会自动检查Linux环境并申请sudo权限，然后调用正式安装器。
 
+如果服务器上只有GitHub自动安装脚本，可执行：
+
+```bash
+sh install-from-github.sh
+```
+
+该脚本自动查询最新Release、下载压缩包和SHA-256文件、完成校验和解压，然后进入安装向导。私有仓库需要已登录的GitHub CLI或只读 `GITHUB_TOKEN`。
+
 ## 安装内容
 
 | 路径 | 内容 |

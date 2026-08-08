@@ -41,6 +41,24 @@ FMO客户端
 
 ### 一键安装包
 
+直接从GitHub自动获取最新版并安装：
+
+```bash
+sh install-from-github.sh
+```
+
+仓库为私有状态时，服务器需要先执行 `gh auth login`，或者临时设置具有该仓库只读权限的 `GITHUB_TOKEN`。脚本不会显示或保存Token。公开仓库可直接匿名执行。
+
+私有仓库可用GitHub CLI把自动安装脚本直接拉到Linux服务器：
+
+```bash
+gh auth login
+gh api -H "Accept: application/vnd.github.raw+json" repos/54dashayu/fmo-ai-voice-gateway/contents/install-from-github.sh > /tmp/fmo-ai-install.sh
+sh /tmp/fmo-ai-install.sh
+```
+
+这三条命令只需首次安装时执行；脚本随后会自动下载最新Release，不需要手工填写版本号。
+
 支持范围：
 
 | Linux发行版 | 架构 | Python |
@@ -52,8 +70,8 @@ FMO客户端
 从GitHub Release下载并校验安装包后执行：
 
 ```bash
-tar -xzf fmo-ai-voice-gateway-0.1.1.tar.gz
-cd fmo-ai-voice-gateway-0.1.1
+tar -xzf fmo-ai-voice-gateway-0.1.2.tar.gz
+cd fmo-ai-voice-gateway-0.1.2
 sh install.sh
 ```
 
