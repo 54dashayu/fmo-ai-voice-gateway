@@ -43,5 +43,12 @@
       "api_key_env": "DASHSCOPE_API_KEY",
       "native_base_url": ""
     }
+  },
+  "knowledge": {
+    "enabled": false,
+    "base_url": "http://127.0.0.1:18787",
+    "token_env": "FMO_KB_ADMIN_TOKEN",
+    "max_results": 3,
+    "timeout_seconds": 8
   }
 }

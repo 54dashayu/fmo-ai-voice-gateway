@@ -410,6 +410,52 @@ async function saveProviderConfig(){
   button.disabled=false;
 }
 
+function renderKnowledgeConfig(config){
+  const value=(config&&config.knowledge)||{};
+  const enabled=Boolean(value.enabled);
+  $('kb-config-enabled').checked=enabled;
+  $('kb-config-fields').hidden=!enabled;
+  $('kb-config-base-url').value=value.base_url||'http://127.0.0.1:18787';
+  $('kb-config-token-env').value=value.token_env||'FMO_KB_ADMIN_TOKEN';
+  $('kb-config-token').value='';
+  $('kb-config-token').placeholder=value.has_token?'留空不改（已配置）':'留空不改';
+  $('kb-config-max-results').value=String(value.max_results||3);
+  $('kb-config-timeout').value=String(value.timeout_seconds||8);
+}
+
+function collectKnowledgeConfig(){
+  const value={
+    enabled:$('kb-config-enabled').checked,
+    base_url:($('kb-config-base-url').value||'http://127.0.0.1:18787').trim(),
+    token_env:($('kb-config-token-env').value||'FMO_KB_ADMIN_TOKEN').trim(),
+    max_results:toIntOrDefault($('kb-config-max-results').value,3),
+    timeout_seconds:Number($('kb-config-timeout').value||8),
+  };
+  const token=($('kb-config-token').value||'').trim();
+  if(token)value.token=token;
+  return {knowledge:value};
+}
+
+async function loadKnowledgeConfig(){
+  const button=$('kb-config-load');button.disabled=true;
+  try{
+    const {response:r,data:d}=await apiRequestJsonCandidates(detectGatewayConfigCandidates('gateway-config'),{headers:{'X-FMO-Admin':'1'},cache:'no-store'});
+    if(!r.ok)throw new Error(d.error||'读取失败');
+    renderKnowledgeConfig(d);$('kb-config-result').textContent='知识库配置已读取';
+  }catch(e){$('kb-config-result').textContent=`读取失败：${e.message}`}
+  button.disabled=false;
+}
+
+async function saveKnowledgeConfig(){
+  const button=$('kb-config-save');button.disabled=true;$('kb-config-result').textContent='保存中…';
+  try{
+    const {response:r,data:d}=await apiRequestJsonCandidates(detectGatewayConfigCandidates('gateway-config'),{method:'POST',headers:{'Content-Type':'application/json','X-FMO-Admin':'1'},body:JSON.stringify(collectKnowledgeConfig())});
+    if(!r.ok)throw new Error(d.error||'保存失败');
+    renderKnowledgeConfig(d);$('kb-config-result').textContent='已保存；重启AI网关和MQTT监听后生效。';
+  }catch(e){$('kb-config-result').textContent=`保存失败：${e.message}`}
+  button.disabled=false;
+}
+
 async function saveGatewayConfig(){
   const button=$('gateway-config-save');
   button.disabled=true;
@@ -457,5 +503,6 @@ $('blacklist-save').addEventListener('click',saveBlacklist);$('persona-save').ad
 $('provider-config-panel') && ($('provider-config-panel').open = false);
 $('provider-advanced') && ($('provider-advanced').open = false);
 $('provider-load').addEventListener('click',loadProviderConfig);$('provider-save').addEventListener('click',saveProviderConfig);renderProviderConfig({providers:{}});loadProviderConfig();
+$('kb-config-enabled').addEventListener('change',()=>{$('kb-config-fields').hidden=!$('kb-config-enabled').checked});$('kb-config-load').addEventListener('click',loadKnowledgeConfig);$('kb-config-save').addEventListener('click',saveKnowledgeConfig);renderKnowledgeConfig({knowledge:{enabled:false}});loadKnowledgeConfig();
 document.querySelectorAll('.sort-button').forEach(button=>button.addEventListener('click',()=>changeCallsignSort(button.dataset.sort)));
 document.querySelectorAll('.control-toggle').forEach(button=>button.addEventListener('click',()=>toggleControl(button)));

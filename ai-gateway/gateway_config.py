@@ -73,6 +73,23 @@ def provider(name: str) -> dict[str, Any]:
     return base
 
 
+def knowledge() -> dict[str, Any]:
+    config = load().get("knowledge", {})
+    if not isinstance(config, dict):
+        config = {}
+    token_env = str(config.get("token_env", "FMO_KB_ADMIN_TOKEN"))
+    enabled_value = config.get("enabled")
+    enabled = enabled_value if type(enabled_value) is bool else os.getenv("FMO_KB_ENABLED", "false").lower() == "true"
+    return {
+        "enabled": enabled,
+        "base_url": str(config.get("base_url", os.getenv("FMO_KB_BASE_URL", "http://127.0.0.1:18787"))).rstrip("/"),
+        "token_env": token_env,
+        "token": str(config.get("token", os.getenv(token_env, ""))),
+        "max_results": int(config.get("max_results", os.getenv("FMO_KB_MAX_RESULTS", "3"))),
+        "timeout_seconds": float(config.get("timeout_seconds", os.getenv("FMO_KB_TIMEOUT_SECONDS", "8"))),
+    }
+
+
 def selected_mqtt_server() -> dict[str, Any]:
     targets = mqtt_servers()
     selected = os.getenv("FMO_MQTT_PROFILE", "").strip()
@@ -134,9 +151,18 @@ def safe_snapshot() -> dict[str, Any]:
             "api_key_env": conf.get("api_key_env", ""),
             "has_api_key": bool(conf.get("api_key") or os.getenv(conf.get("api_key_env", "DASHSCOPE_API_KEY"), "")),
         }
+    knowledge_config = knowledge()
     return {
         "mqtt_servers": [_redact_server(item) for item in mqtt_servers()],
         "providers": sanitized_providers,
+        "knowledge": {
+            "enabled": knowledge_config["enabled"],
+            "base_url": knowledge_config["base_url"],
+            "token_env": knowledge_config["token_env"],
+            "has_token": bool(knowledge_config["token"]),
+            "max_results": knowledge_config["max_results"],
+            "timeout_seconds": knowledge_config["timeout_seconds"],
+        },
         "selected_profile": os.getenv("FMO_MQTT_PROFILE", ""),
     }
 
@@ -178,6 +204,23 @@ def _validate_config(config: dict[str, Any]) -> None:
         if not api_key_env.startswith("DASHSCOPE_") or not api_key_env.endswith("API_KEY"):
             raise ValueError("API key environment name must use DASHSCOPE_*API_KEY")
 
+    knowledge_config = config.get("knowledge", {})
+    if not isinstance(knowledge_config, dict):
+        raise ValueError("invalid knowledge configuration")
+    if knowledge_config:
+        if type(knowledge_config.get("enabled", False)) is not bool:
+            raise ValueError("knowledge enabled must be boolean")
+        parsed = urlparse(str(knowledge_config.get("base_url", "")))
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError("knowledge base URL must be HTTP or HTTPS")
+        token_env = str(knowledge_config.get("token_env", "FMO_KB_ADMIN_TOKEN"))
+        if not token_env.startswith("FMO_") or not token_env.endswith("TOKEN"):
+            raise ValueError("knowledge token environment name must use FMO_*TOKEN")
+        if not 1 <= int(knowledge_config.get("max_results", 3)) <= 10:
+            raise ValueError("knowledge max_results must be 1..10")
+        if not 1 <= float(knowledge_config.get("timeout_seconds", 8)) <= 60:
+            raise ValueError("knowledge timeout_seconds must be 1..60")
+
 
 def _preserve_secrets(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
     """Treat blank or redacted UI secret values as 'keep the existing value'."""
@@ -207,6 +250,13 @@ def _preserve_secrets(base: dict[str, Any], overrides: dict[str, Any]) -> dict[s
                 item["api_key"] = old["api_key"]
             else:
                 item.pop("api_key", None)
+    knowledge_override = value.get("knowledge")
+    if isinstance(knowledge_override, dict) and knowledge_override.get("token") in {None, "", SECRET_PLACEHOLDER}:
+        old_knowledge = base.get("knowledge", {}) if isinstance(base.get("knowledge"), dict) else {}
+        if old_knowledge.get("token"):
+            knowledge_override["token"] = old_knowledge["token"]
+        else:
+            knowledge_override.pop("token", None)
     return value
 
 

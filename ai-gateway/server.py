@@ -92,12 +92,13 @@ def watchdog_state() -> dict:
 
 
 def knowledge_admin_request(path: str, method: str = "GET", body: dict | None = None) -> dict:
-    if not flag("FMO_KB_ENABLED"):
+    config = gateway_config.knowledge()
+    if not config["enabled"]:
         raise RuntimeError("NAS knowledge service is disabled")
-    token = os.getenv("FMO_KB_ADMIN_TOKEN", "")
+    token = config["token"]
     if not token:
         raise RuntimeError("NAS knowledge token is not configured")
-    base = os.getenv("FMO_KB_BASE_URL", "http://127.0.0.1:18787").rstrip("/")
+    base = config["base_url"]
     headers = {"Authorization": f"Bearer {token}"}
     data = None
     if body is not None:
@@ -189,11 +190,12 @@ class Handler(BaseHTTPRequestHandler):
             gateway_status["requests_total"] += mqtt.get("chat_total", 0) + mqtt.get("knowledge_total", 0)
             if mqtt.get("last_voice"):
                 gateway_status["last_result"] = mqtt["last_voice"].get("result", gateway_status["last_result"])
-            kb_enabled = flag("FMO_KB_ENABLED")
+            knowledge_config = gateway_config.knowledge()
+            kb_enabled = knowledge_config["enabled"]
             nas = {"enabled": kb_enabled, "ok": False, "sections": None}
             if kb_enabled:
                 try:
-                    kb_base = os.getenv("FMO_KB_BASE_URL", "http://127.0.0.1:18787").rstrip("/")
+                    kb_base = knowledge_config["base_url"]
                     with urllib.request.urlopen(f"{kb_base}/health", timeout=3) as response:
                         value = json.load(response)
                     nas = {"enabled": True, "ok": bool(value.get("ok")), "sections": value.get("sections")}

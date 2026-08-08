@@ -77,7 +77,7 @@ def allow_all_callsigns() -> bool:
 
 
 def knowledge_enabled() -> bool:
-    return os.getenv("FMO_KB_ENABLED", "false").lower() == "true"
+    return bool(gateway_config.knowledge()["enabled"])
 
 
 def _provider_headers() -> dict:
@@ -251,13 +251,14 @@ def embed_text(text: str) -> list[float]:
 def search_knowledge(text: str) -> list[dict]:
     if not knowledge_enabled():
         return []
-    token = os.getenv("FMO_KB_ADMIN_TOKEN")
+    config = gateway_config.knowledge()
+    token = config["token"]
     if not token:
         raise RuntimeError("FMO_KB_ADMIN_TOKEN is not set")
-    payload = {"embedding": embed_text(text), "limit": int(os.getenv("FMO_KB_MAX_RESULTS", "3"))}
+    payload = {"embedding": embed_text(text), "limit": config["max_results"]}
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    base = os.getenv("FMO_KB_BASE_URL", "http://127.0.0.1:18787").rstrip("/")
-    data = _post_json(f"{base}/v1/search", payload, headers, float(os.getenv("FMO_KB_TIMEOUT_SECONDS", "8")))
+    base = config["base_url"]
+    data = _post_json(f"{base}/v1/search", payload, headers, config["timeout_seconds"])
     results = data.get("results")
     if not isinstance(results, list):
         raise RuntimeError("NAS knowledge service returned an unexpected response")

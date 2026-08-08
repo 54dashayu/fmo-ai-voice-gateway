@@ -45,6 +45,24 @@ class GatewayConfigTests(unittest.TestCase):
                 "model": "qwen-plus", "api_key_env": "DASHSCOPE_API_KEY",
             }}}, target_path=path)
 
+    def test_optional_knowledge_config_is_redacted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "gateway-config.json")
+            with mock.patch.object(gateway_config, "DEFAULT_GATEWAY_CONFIG_PATH", path):
+                gateway_config.merge_and_save({"knowledge": {
+                    "enabled": True,
+                    "base_url": "http://127.0.0.1:18787",
+                    "token_env": "FMO_KB_ADMIN_TOKEN",
+                    "token": "knowledge-secret",
+                    "max_results": 4,
+                    "timeout_seconds": 9,
+                }}, target_path=path)
+                snapshot = gateway_config.safe_snapshot()
+            self.assertTrue(snapshot["knowledge"]["enabled"])
+            self.assertTrue(snapshot["knowledge"]["has_token"])
+            self.assertNotIn("token", snapshot["knowledge"])
+            self.assertEqual(snapshot["knowledge"]["max_results"], 4)
+
 
 if __name__ == "__main__":
     unittest.main()

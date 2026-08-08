@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>FMO AI 服务状态</title>
-  <link rel="stylesheet" href="style.css?v=20260808-optional-kb-v10">
+  <link rel="stylesheet" href="style.css?v=20260808-kb-config-v11">
 </head>
 <body>
   <main>
@@ -160,6 +160,39 @@
         </div>
         <p class="hint" id="provider-result"></p>
       </details>
+    </section>
+
+    <section class="panel">
+      <h2>NAS 知识库（可选）</h2>
+      <label class="checkbox-row">
+        <input type="checkbox" id="kb-config-enabled">
+        <span>使用 NAS 知识库</span>
+      </label>
+      <p class="hint">关闭时不连接NAS，知识问题直接使用百炼联网回答。开启后再填写下列连接参数。</p>
+      <div id="kb-config-fields" hidden>
+        <div class="gateway-config-form-grid">
+          <label>NAS知识服务地址
+            <input id="kb-config-base-url" maxlength="255" placeholder="http://127.0.0.1:18787">
+          </label>
+          <label>Token环境变量
+            <input id="kb-config-token-env" maxlength="64" placeholder="FMO_KB_ADMIN_TOKEN">
+          </label>
+          <label>独立访问Token
+            <input id="kb-config-token" type="password" autocomplete="off" placeholder="留空不改">
+          </label>
+          <label>单次检索条数
+            <input id="kb-config-max-results" type="number" min="1" max="10" value="3">
+          </label>
+          <label>请求超时（秒）
+            <input id="kb-config-timeout" type="number" min="1" max="60" step="0.5" value="8">
+          </label>
+        </div>
+      </div>
+      <div class="config-row-actions">
+        <button id="kb-config-load" type="button">读取配置</button>
+        <button id="kb-config-save" class="primary-button" type="button">保存知识库设置</button>
+      </div>
+      <p class="hint" id="kb-config-result"></p>
     </section>
 
     <section class="panel">
@@ -349,6 +382,6 @@
 
     <footer>最后刷新：<span id="updated">—</span> · 每 15 秒自动刷新</footer>
   </main>
-  <script src="app.js?v=20260808-optional-kb-v10"></script>
+  <script src="app.js?v=20260808-kb-config-v11"></script>
 </body>
 </html>

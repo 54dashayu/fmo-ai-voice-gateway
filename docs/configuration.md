@@ -50,6 +50,8 @@ FMO_KB_ADMIN_TOKEN=
 
 普通聊天、ASR、TTS和百炼联网知识回答仍可正常使用，也不会探测NAS地址。需要私有知识库时再部署 `nas-knowledge-service/`，设置独立Token并改为 `FMO_KB_ENABLED=true`。
 
+管理页面采用两层设置：先选择“使用NAS知识库”，开启后才显示NAS地址、Token、检索条数和超时。Token读取时只显示是否已配置，不返回明文。
+
 ## 配置生效
 
 网页保存写入 `gateway-config.json`。模型网关与MQTT监听在启动时加载配置，因此修改后需按变更范围重启：
