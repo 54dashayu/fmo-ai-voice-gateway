@@ -1,0 +1,28 @@
+services:
+  fmo-knowledge:
+    build: .
+    container_name: fmo-knowledge
+    restart: unless-stopped
+    environment:
+      FMO_KB_ADMIN_TOKEN: ${FMO_KB_ADMIN_TOKEN:?required}
+      FMO_KB_PORT: "8787"
+      FMO_KB_MAX_RESULTS: "10"
+      FMO_KB_AUDIO_TTL_SECONDS: "3600"
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./data:/data
+    mem_limit: 1g
+    cpus: 1.5
+    pids_limit: 100
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+

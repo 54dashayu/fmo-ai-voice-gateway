@@ -1,0 +1,42 @@
+[Unit]
+Description=FMO Alibaba Model Studio AI Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fmo-ai
+Group=fmo-ai
+WorkingDirectory=/opt/fmo-ai-gateway
+EnvironmentFile=/etc/fmo-ai-gateway.env
+ExecStart=/usr/bin/python3 /opt/fmo-ai-gateway/server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+StateDirectory=fmo-ai-gateway
+StateDirectoryMode=0700
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryMax=160M
+TasksMax=40
+Environment=FMO_AUDIO_DIR=/var/lib/fmo-ai-gateway/audio
+Environment=FMO_MQTT_STATE_PATH=/run/fmo-ai-mqtt/status.json
+Environment=FMO_ALLOW_ALL_CALLSIGNS=false
+Environment=FMO_CALLSIGN_BLACKLIST_PATH=/var/lib/fmo-ai-gateway/callsign-blacklist.json
+Environment=FMO_CALLSIGN_STATS_PATH=/var/lib/fmo-ai-gateway/callsign-stats.json
+Environment=FMO_CONTROL_STATE_PATH=/var/lib/fmo-ai-gateway/control-state.json
+Environment=FMO_PERSONA_STATE_PATH=/var/lib/fmo-ai-gateway/persona-state.json
+Environment=FMO_VOICE_CONTROL_CALLSIGN=
+Environment=FMO_APRS_POSITION_STATE_PATH=/var/lib/fmo-ai-gateway/aprs-positions.json
+Environment=FMO_APRS_FILTER=u/APFMO*
+Environment=FMO_GATEWAY_CONFIG_PATH=/etc/fmo-ai-gateway/gateway-config.json
+ReadOnlyPaths=-/run/fmo-ai-mqtt
+ReadOnlyPaths=-/run/fmo-service-watchdog
+
+[Install]
+WantedBy=multi-user.target

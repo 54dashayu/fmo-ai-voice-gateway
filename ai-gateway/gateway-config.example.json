@@ -1,0 +1,47 @@
+{
+  "mqtt_servers": [
+    {
+      "name": "primary",
+      "host": "127.0.0.1",
+      "port": 1884,
+      "topic": "FMO/RAW",
+      "client_id": "FMO-AI-MONITOR-CHANGE-ME",
+      "username": "",
+      "password": "",
+      "enabled": true,
+      "tls": {
+        "enabled": false,
+        "ca_file": "/etc/fmo-ai-gateway/ca.pem",
+        "cert_file": null,
+        "key_file": null
+      }
+    }
+  ],
+  "providers": {
+    "chat": {
+      "provider": "dashscope",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen-plus",
+      "api_key_env": "DASHSCOPE_API_KEY"
+    },
+    "embedding": {
+      "provider": "dashscope",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "text-embedding-v4",
+      "api_key_env": "DASHSCOPE_API_KEY"
+    },
+    "asr": {
+      "provider": "dashscope",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen3-asr-flash",
+      "api_key_env": "DASHSCOPE_API_KEY"
+    },
+    "tts": {
+      "provider": "dashscope",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "cosyvoice-v3-flash",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "native_base_url": ""
+    }
+  }
+}

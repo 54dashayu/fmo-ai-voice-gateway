@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>FMO AI 服务状态</title>
+  <link rel="stylesheet" href="style.css?v=20260808-client-id-v9">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">FMO VOICE AI GATEWAY</p>
+        <h1>AI 服务状态</h1>
+        <p class="subtitle">VPS 网关、NAS 知识库与百炼模型的脱敏运行状态 <span style="color:var(--cyan)">（上游配置：精简/高级折叠 v2）</span></p>
+      </div>
+      <div id="overall" class="pill waiting">正在连接</div>
+    </header>
+
+    <section class="grid">
+      <article><span>AI 网关</span><strong id="gateway">—</strong><small id="uptime">—</small></article>
+      <article id="nas-card" class="clickable-card" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="knowledge-overlay"><span>NAS 知识库</span><strong id="nas">—</strong><small id="sections">— · 点击管理</small></article>
+      <article><span>文本模型</span><strong id="chat-model">—</strong><small>阿里云百炼</small></article>
+      <article><span>向量模型</span><strong id="embedding-model">—</strong><small>阿里云百炼</small></article>
+    </section>
+
+    <section class="panel">
+      <h2>请求统计</h2>
+      <div class="stats">
+        <div><strong id="requests">0</strong><span>累计请求</span></div>
+        <div><strong id="chat-count">0</strong><span>普通聊天</span></div>
+        <div><strong id="knowledge-count">0</strong><span>知识问答</span></div>
+        <div><strong id="last-result">等待</strong><span>最近结果</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>公网 MQTT 实时心跳</h2>
+      <div class="stats">
+        <div><strong id="heartbeat-public">—</strong><span>公网 MQTT 28883</span></div>
+        <div><strong id="heartbeat-emqx">—</strong><span>EMQX 本机</span></div>
+        <div><strong id="heartbeat-sas">—</strong><span>SAS 鉴权</span></div>
+        <div><strong id="heartbeat-action">—</strong><span>最近自愈动作</span></div>
+      </div>
+      <p class="hint">每 <span id="heartbeat-interval">—</span> 秒检测 · 连续失败 3 次才自愈 · EMQX/SAS 重启冷却 5 分钟</p>
+    </section>
+
+    <section class="panel">
+      <h2>上游大模型配置</h2>
+      <details id="provider-config-panel" class="inline-details">
+        <summary>展开上游模型配置（默认折叠）</summary>
+        <p class="hint">默认精简模式：统一一个上游入口与 API Key。需要按能力定制时展开高级配置。</p>
+        <div class="provider-row provider-basic">
+          <label>上游服务商
+            <input id="provider-global-name" value="dashscope" maxlength="24" readonly>
+          </label>
+          <label>Base URL
+            <input id="provider-global-base" maxlength="160" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
+          </label>
+          <label>API Key环境变量
+            <input id="provider-global-key-env" maxlength="64" value="DASHSCOPE_API_KEY">
+          </label>
+          <label>API Key
+            <input id="provider-global-key" type="password" autocomplete="off" placeholder="留空不改">
+          </label>
+        </div>
+        <div class="provider-row provider-basic">
+          <label>聊天模型
+            <input id="provider-chat-model-simple" maxlength="64" placeholder="qwen-plus">
+          </label>
+          <label>知识向量模型
+            <input id="provider-embedding-model-simple" maxlength="64" placeholder="text-embedding-v4">
+          </label>
+          <label>ASR模型
+            <input id="provider-asr-model-simple" maxlength="64" placeholder="qwen3-asr-flash">
+          </label>
+          <label>TTS模型
+            <input id="provider-tts-model-simple" maxlength="64" placeholder="cosyvoice-v3-flash">
+          </label>
+        </div>
+
+        <details id="provider-advanced" class="inline-details">
+          <summary>高级配置：按能力独立设置（可选）</summary>
+          <div class="provider-details-inner">
+            <div class="provider-row">
+              <label>聊天 provider
+                <input id="provider-chat-name" value="dashscope" maxlength="24" readonly>
+              </label>
+              <label>聊天模型
+                <input id="provider-chat-model" maxlength="64" placeholder="qwen-plus">
+              </label>
+              <label>聊天 Base URL
+                <input id="provider-chat-base" maxlength="160" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
+              </label>
+              <label>聊天 API Key环境变量
+                <input id="provider-chat-key-env" maxlength="64" value="DASHSCOPE_API_KEY">
+              </label>
+              <label>聊天 API Key
+                <input id="provider-chat-key" type="password" autocomplete="off" placeholder="留空不改">
+              </label>
+            </div>
+            <div class="provider-row">
+              <label>知识向量 provider
+                <input id="provider-embedding-name" value="dashscope" maxlength="24" readonly>
+              </label>
+              <label>知识向量模型
+                <input id="provider-embedding-model" maxlength="64" placeholder="text-embedding-v4">
+              </label>
+              <label>知识向量 Base URL
+                <input id="provider-embedding-base" maxlength="160" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
+              </label>
+              <label>知识向量 API Key环境变量
+                <input id="provider-embedding-key-env" maxlength="64" value="DASHSCOPE_API_KEY">
+              </label>
+              <label>知识向量 API Key
+                <input id="provider-embedding-key" type="password" autocomplete="off" placeholder="留空不改">
+              </label>
+            </div>
+            <div class="provider-row">
+              <label>ASR provider
+                <input id="provider-asr-name" value="dashscope" maxlength="24" readonly>
+              </label>
+              <label>ASR 模型
+                <input id="provider-asr-model" maxlength="64" placeholder="qwen3-asr-flash">
+              </label>
+              <label>ASR Base URL
+                <input id="provider-asr-base" maxlength="160" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
+              </label>
+              <label>ASR API Key环境变量
+                <input id="provider-asr-key-env" maxlength="64" value="DASHSCOPE_ASR_API_KEY">
+              </label>
+              <label>ASR API Key
+                <input id="provider-asr-key" type="password" autocomplete="off" placeholder="留空不改">
+              </label>
+            </div>
+            <div class="provider-row">
+              <label>TTS provider
+                <input id="provider-tts-name" value="dashscope" maxlength="24" readonly>
+              </label>
+              <label>TTS 模型
+                <input id="provider-tts-model" maxlength="64" placeholder="cosyvoice-v3-flash">
+              </label>
+              <label>TTS Base URL
+                <input id="provider-tts-base" maxlength="160" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
+              </label>
+              <label>TTS API Key环境变量
+                <input id="provider-tts-key-env" maxlength="64" value="DASHSCOPE_TTS_API_KEY">
+              </label>
+              <label>TTS API Key
+                <input id="provider-tts-key" type="password" autocomplete="off" placeholder="留空不改">
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <div class="config-row-actions">
+          <button id="provider-load" type="button">读取模型配置</button>
+          <button id="provider-save" class="primary-button" type="button">保存并应用</button>
+        </div>
+        <p class="hint" id="provider-result"></p>
+      </details>
+    </section>
+
+    <section class="panel">
+      <h2>MQTT 接入设置</h2>
+      <p class="hint">MQTT 接入配置可在这里直接编辑：<button id="gateway-config-open" class="inline-manage-button" type="button">配置网关</button></p>
+      <div class="stats">
+        <div><strong id="mqtt-mode">—</strong><span>当前模式</span></div>
+        <div><strong id="mqtt-bursts">0</strong><span>累计语段</span></div>
+        <div><strong id="mqtt-last-frames">—</strong><span>最近帧数</span></div>
+        <div><strong id="mqtt-last-duration">—</strong><span>最近语段时长</span></div>
+      </div>
+      <p class="hint">松键判断：<span id="mqtt-end-gap">—</span> · 原始语音默认不长期保存</p>
+    </section>
+
+    <section class="panel">
+      <h2>语音链路安全开关</h2>
+      <div class="switches">
+        <div><span>AI 基础能力</span><b id="ai-enabled">—</b></div>
+        <div><span>允许呼号数量</span><b id="callsigns">—</b></div>
+        <div><span>MQTT 接入</span><b id="mqtt">—</b></div>
+        <div><span>ASR</span><b id="asr">—</b></div>
+        <div><span>TTS</span><b id="tts">—</b></div>
+        <div><span>PTT 发射</span><b id="ptt">—</b></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>AI 业务开关</h2>
+      <div class="control-grid">
+        <div><span>自动问答</span><button class="control-toggle" id="auto-reply-toggle" type="button" data-control="auto_reply">读取中</button></div>
+        <div><span>整点报时</span><button class="control-toggle" id="hourly-toggle" type="button" data-control="hourly_announcement">读取中</button></div>
+        <div><span>身份语音设置</span><button class="control-toggle" id="persona-voice-toggle" type="button" data-control="persona_voice_commands">读取中</button></div>
+      </div>
+      <p class="hint">网页开关受后台登录保护。“身份语音设置”关闭后，所有呼号都不能通过语音修改AI名字、性别、年龄及口音/口吻，但网页设置仍可使用。自动回复和整点报时权限由服务器端策略控制。</p>
+      <p class="hint" id="control-result"></p>
+    </section>
+
+    <section class="panel">
+      <h2>AI 身份与表达</h2>
+      <div class="persona-grid">
+        <label>名字<input id="persona-name" maxlength="16"></label>
+        <label>性别设定<input id="persona-gender" maxlength="12"></label>
+        <label>年龄设定<input id="persona-age" maxlength="12"></label>
+        <label>口音/口吻<input id="persona-accent" maxlength="24"></label>
+        <label class="persona-wide">补充人设<textarea id="persona-description" maxlength="120" rows="3"></textarea></label>
+      </div>
+      <button id="persona-save" class="primary-button" type="button">保存身份设定</button>
+      <p class="hint">当前百炼TTS音色：<strong id="persona-voice">—</strong> · 声学口音：<strong id="persona-acoustic-accent">—</strong>。</p>
+      <p class="hint">当前支持的声学口音：普通话、东北话（男女声）、广东话/粤语、河南话、湖南话、陕西话、山东话、四川话、安徽话（后八项使用兼容女声），以及台湾口音（专用女声）。武汉话、北京话等其他输入会作为文字口吻保留。</p>
+      <p class="hint">所有非黑名单呼号均可通过语音修改名字、性别、年龄和口音/口吻，ASR相似度达到60%即可。</p>
+      <p class="hint" id="persona-result"></p>
+    </section>
+
+    <section class="panel">
+      <h2>整点 AI 报时</h2>
+      <div class="stats">
+        <div><strong id="hourly-enabled">—</strong><span>当前状态</span></div>
+        <div><strong id="hourly-window">—</strong><span>北京时间播报范围</span></div>
+        <div><strong id="hourly-last-result">—</strong><span>上次结果</span></div>
+        <div><strong id="hourly-last-time">—</strong><span>上次尝试</span></div>
+      </div>
+      <p class="hint">每小时整点播报；每天23:50、23:52、23:54、23:56、23:58和23:59播报零点休息预告。频道需连续空闲 <span id="hourly-idle">—</span> 秒；真人通话优先，繁忙时跳过当次，不影响中间正常问答。</p>
+    </section>
+
+    <section class="panel">
+      <h2>呼入呼号与黑名单</h2>
+      <p class="hint">当前策略：<strong id="callsign-policy">—</strong> · 黑名单 <strong id="blacklist-count">0</strong> 个 <button id="blacklist-open" class="inline-manage-button" type="button">查看黑名单</button></p>
+      <div class="blacklist-editor">
+        <input id="blacklist-input" autocomplete="off" placeholder="输入呼号，使用逗号分隔">
+        <button id="blacklist-save" type="button">保存黑名单</button>
+      </div>
+      <div class="callsign-table-wrap">
+        <table class="callsign-table">
+          <thead><tr>
+            <th><button class="sort-button" type="button" data-sort="callsign">呼号 <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-sort="heard">呼入 <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-sort="answered">已回复 <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-sort="blocked">已拦截 <span class="sort-indicator"></span></button></th>
+            <th><button class="sort-button" type="button" data-sort="last_at">最近呼入 <span class="sort-indicator"></span></button></th>
+            <th>操作</th>
+          </tr></thead>
+          <tbody id="callsign-stats"><tr><td colspan="6">暂无记录</td></tr></tbody>
+        </table>
+      </div>
+      <p class="hint">点击列标题可切换升序或降序；默认按最近呼入时间倒序。</p>
+      <p class="hint" id="blacklist-result"></p>
+    </section>
+
+    <div id="blacklist-overlay" class="modal-overlay" hidden>
+    <section class="panel blacklist-dialog" role="dialog" aria-modal="true" aria-labelledby="blacklist-title">
+      <div class="dialog-header"><h2 id="blacklist-title">黑名单管理</h2><button id="blacklist-close" class="dialog-close" type="button" aria-label="关闭黑名单管理">×</button></div>
+      <p class="hint">当前共有 <strong id="blacklist-dialog-count">0</strong> 个呼号。移除后立即恢复该呼号的自动问答权限。</p>
+      <div id="blacklist-list" class="blacklist-list"><p class="hint">读取中</p></div>
+      <p class="hint" id="blacklist-dialog-result"></p>
+    </section>
+    </div>
+
+    <div id="gateway-config-overlay" class="modal-overlay" hidden>
+    <section class="panel gateway-config-dialog" role="dialog" aria-modal="true" aria-labelledby="gateway-config-title">
+      <div class="dialog-header"><h2 id="gateway-config-title">AI网关配置</h2><button id="gateway-config-close" class="dialog-close" type="button" aria-label="关闭网关配置">×</button></div>
+      <p class="hint">通常只需填写服务器地址、端口和语音主题。当前 AI 与 EMQX 在同一台阿里云服务器时，保持 127.0.0.1:1884 即可。</p>
+      <div class="gateway-config-form-grid">
+        <label>MQTT Host
+          <input id="gw-host" maxlength="255" placeholder="127.0.0.1">
+        </label>
+        <label>MQTT Port
+          <input id="gw-port" type="number" min="1" max="65535" placeholder="1884">
+        </label>
+        <label>Topic
+          <input id="gw-topic" maxlength="64" placeholder="FMO/RAW">
+        </label>
+        <label>Client ID
+          <input id="gw-client-id" maxlength="64" placeholder="FMO-AI-MONITOR-CHANGE-ME">
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="gw-enabled" checked>
+          <span>启用该MQTT配置</span>
+        </label>
+      </div>
+      <details id="gateway-connection-advanced" class="inline-details">
+        <summary>高级连接与鉴权（通常不需要填写）</summary>
+        <p class="hint">用户名和密码是对方 MQTT Broker 提供的客户端账号，不是 FMO 呼号、FMO CA 或百炼账号。只有外部服务器明确要求时才填写。</p>
+        <div class="gateway-config-form-grid">
+          <label>配置名称
+            <input id="gw-name" maxlength="32" placeholder="primary">
+          </label>
+          <label>MQTT 用户名
+            <input id="gw-username" maxlength="64" autocomplete="off" placeholder="留空表示不使用">
+          </label>
+          <label>MQTT 密码
+            <input id="gw-password" type="password" autocomplete="off" placeholder="留空表示保持原值">
+          </label>
+          <label class="checkbox-row">
+            <input type="checkbox" id="gw-tls-enabled">
+            <span>启用 TLS</span>
+          </label>
+          <label>CA 文件
+            <input id="gw-ca-file" maxlength="255" placeholder="可选">
+          </label>
+          <label>客户端证书
+            <input id="gw-cert-file" maxlength="255" placeholder="可选">
+          </label>
+          <label>客户端私钥
+            <input id="gw-key-file" maxlength="255" placeholder="可选">
+          </label>
+        </div>
+      </details>
+      <details id="gateway-config-advanced" class="inline-details">
+        <summary>高级：编辑原始 JSON（可选）</summary>
+        <textarea id="gateway-config-editor" class="config-editor" spellcheck="false" aria-label="网关配置 JSON 编辑区"></textarea>
+      </details>
+      <p class="hint" id="gateway-config-result"></p>
+      <div class="config-row-actions">
+        <button id="gateway-config-load" type="button">重新读取</button>
+        <button id="gateway-config-save" class="primary-button" type="button">保存并应用</button>
+      </div>
+    </section>
+    </div>
+
+    <div id="knowledge-overlay" class="modal-overlay" hidden>
+    <section class="panel knowledge-dialog" role="dialog" aria-modal="true" aria-labelledby="knowledge-title">
+      <div class="dialog-header"><h2 id="knowledge-title">NAS 知识库管理</h2><button id="knowledge-close" class="dialog-close" type="button" aria-label="关闭知识库管理">×</button></div>
+      <div class="stats knowledge-stats">
+        <div><strong id="kb-files">—</strong><span>原始文件</span></div>
+        <div><strong id="kb-documents">—</strong><span>已入库文档</span></div>
+        <div><strong id="kb-sections">—</strong><span>知识切片</span></div>
+        <div><strong id="kb-searches">—</strong><span>累计检索</span></div>
+        <div><strong id="kb-hits">—</strong><span>有结果检索</span></div>
+        <div><strong id="kb-latest">—</strong><span>最近调用</span></div>
+      </div>
+      <nav id="kb-breadcrumb" class="breadcrumb" aria-label="知识库目录"></nav>
+      <div class="upload-row">
+        <input id="kb-upload-files" type="file" multiple accept=".pdf,.docx,.xlsx,.csv,.txt,.md">
+        <button id="kb-upload-button" class="primary-button" type="button">上传到当前目录</button>
+      </div>
+      <div class="upload-progress"><span id="kb-upload-progress"></span></div>
+      <div class="callsign-table-wrap">
+        <table class="callsign-table">
+          <thead><tr><th>名称</th><th>类型</th><th>大小</th><th>修改时间</th><th>入库状态</th></tr></thead>
+          <tbody id="kb-file-list"><tr><td colspan="5">读取中</td></tr></tbody>
+        </table>
+      </div>
+      <p class="hint">支持 PDF、Word、Excel、CSV、TXT 和 Markdown，单文件最大100MB。上传完成仅表示文件已安全保存；显示“待入库”的文件尚不能参与AI检索。</p>
+      <p class="hint" id="kb-result"></p>
+    </section>
+    </div>
+
+    <footer>最后刷新：<span id="updated">—</span> · 每 15 秒自动刷新</footer>
+  </main>
+  <script src="app.js?v=20260808-client-id-v9"></script>
+</body>
+</html>
