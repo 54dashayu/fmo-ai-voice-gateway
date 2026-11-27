@@ -31,6 +31,15 @@ data/
 
 从主分支取得本目录，在 NAS 上创建权限为 `0600` 的 `.env` 并填入独立的 `FMO_KB_ADMIN_TOKEN`。按需配置下文的两个只读媒体目录，确保数据目录可写，然后启动：
 
+```dotenv
+FMO_KB_ADMIN_TOKEN=REPLACE_WITH_YOUR_RANDOM_TOKEN
+FMO_KB_BIND_IP=127.0.0.1
+FMO_MUSIC_HOST_DIR=./music
+FMO_GALLERY_HOST_DIR=./gallery
+```
+
+两个 `HOST_DIR` 是 NAS 主机路径，相对路径从 Compose 项目目录解析。容器内分别挂载为 `/music` 和 `/gallery`，均为只读。知识文件和索引保存在可写的 `./data`，容器内路径为 `/data`。
+
 ```sh
 mkdir -p data music gallery
 docker compose up -d --build
@@ -48,6 +57,8 @@ curl -fsS http://127.0.0.1:8787/health
 
 本服务仅依赖Python标准库，可使用NAS已安装的Python 3.13运行。`start-native.sh`从`.env`读取独立服务Token，自动定位群晖Python路径并写入PID；`stop-native.sh`用于停止。可在DSM任务计划中建立“开机”任务执行：
 
+原生服务监听所有接口。采用此方式时，先用 NAS 防火墙限制 8787 的访问范围。原生音乐和图库目录通过 `FMO_MUSIC_DIR`、`FMO_GALLERY_DIR` 使用主机绝对路径。
+
 ```sh
 /bin/sh /volume1/docker/knowledge-service/start-native.sh
 ```
@@ -55,10 +66,11 @@ curl -fsS http://127.0.0.1:8787/health
 ## NAS到VPS的反向SSH隧道
 
 使用独立的VPS低权限账号和独立Ed25519密钥。VPS的授权公钥只允许监听
-`127.0.0.1:18787`，NAS开机任务执行：
+`127.0.0.1:18787`。在 NAS 上用以下命令前台启动并验证隧道。按实际部署替换 SSH 用户名、VPS 主机名和 NAS 上存放专用密钥的路径：
 
 ```sh
-/bin/sh /volume1/docker/knowledge-service/start-reverse-tunnel.sh
+ssh -NT -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 \
+  -i /path/to/nas-tunnel-key -R 127.0.0.1:18787:127.0.0.1:8787 tunnel-user@vps.example.org
 ```
 
 VPS上的AI网关通过 `http://127.0.0.1:18787` 访问知识服务。隧道不会开放公网端口，
