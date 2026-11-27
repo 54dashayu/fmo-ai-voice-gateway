@@ -13,5 +13,27 @@ ln -s "$previous" "$APP_DIR/.current-rollback"
 mv -Tf "$APP_DIR/.current-rollback" "$CURRENT_LINK"
 if [[ -n "$current" ]]; then printf '%s\n' "$current" > "$PREVIOUS_FILE"; chmod 0600 "$PREVIOUS_FILE"; fi
 systemctl daemon-reload
-systemctl restart fmo-ai-gateway.service fmo-ai-mqtt-monitor.service
+if ! systemctl restart fmo-ai-gateway.service fmo-ai-mqtt-monitor.service; then
+  ln -s "$current" "$APP_DIR/.current-rollback"
+  mv -Tf "$APP_DIR/.current-rollback" "$CURRENT_LINK"
+  systemctl restart fmo-ai-gateway.service fmo-ai-mqtt-monitor.service || true
+  echo "rollback target failed to start; restored $(basename "$current")" >&2
+  exit 1
+fi
+ready=false
+for _ in {1..20}; do
+  if systemctl is-active --quiet fmo-ai-gateway.service fmo-ai-mqtt-monitor.service && curl -fsS --max-time 2 http://127.0.0.1:18788/health >/dev/null; then
+    ready=true
+    break
+  fi
+  sleep 1
+done
+if ! $ready; then
+  ln -s "$current" "$APP_DIR/.current-rollback"
+  mv -Tf "$APP_DIR/.current-rollback" "$CURRENT_LINK"
+  printf '%s\n' "$previous" > "$PREVIOUS_FILE"
+  systemctl restart fmo-ai-gateway.service fmo-ai-mqtt-monitor.service || true
+  echo "rollback target failed readiness; restored $(basename "$current")" >&2
+  exit 1
+fi
 echo "rolled back to $(basename "$previous"); configuration, secrets, schedules and state were preserved"
