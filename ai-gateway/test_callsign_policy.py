@@ -18,7 +18,7 @@ class CallsignPolicyTests(unittest.TestCase):
             for prefix in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
                 value = prefix + ".BG1ADM"
                 self.assertEqual(callsign_policy.normalize(value.lower()), value)
-                self.assertTrue(callsign_policy.is_prefixed_bh1jss(value))
+                self.assertTrue(callsign_policy.is_configured_admin_callsign(value))
 
     def test_admin_stem_boundaries(self):
         for value in ['BG1ADM','X.BG1ADM','BG1ADM/P','BG1ADM-1','X.BG1ADM/P']:

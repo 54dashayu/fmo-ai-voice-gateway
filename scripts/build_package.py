@@ -15,10 +15,15 @@ INCLUDED_ROOTS = {
 EXCLUDED_PARTS = {".git", "dist", "__pycache__", "data", "audio", "runtime", "capture-output"}
 EXCLUDED_SUFFIXES = (".pyc", ".pyo", ".key", ".pem", ".wav", ".pcap", ".pcapng")
 SECRET_NAMES = {".env", "gateway-config.json", "cluster-credentials.json"}
+EXCLUDED_FILES = {Path("docs/project-overview.md")}
 
 
 def allowed(path: Path) -> bool:
     if not path.parts or path.parts[0] not in INCLUDED_ROOTS:
+        return False
+    if path in EXCLUDED_FILES or "bridge-tests" in path.parts:
+        return False
+    if path.name.startswith("test_") or path.name.endswith("_test.py"):
         return False
     if any(part in EXCLUDED_PARTS for part in path.parts):
         return False

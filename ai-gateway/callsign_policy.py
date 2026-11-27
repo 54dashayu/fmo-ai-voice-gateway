@@ -20,8 +20,8 @@ def is_admin_callsign(value: str, admin: str = "") -> bool:
         r"(?:[A-Z0-9]+[./-])*" + re.escape(admin) + r"(?:[./-][A-Z0-9]+)*", value))
 
 
-def is_prefixed_bh1jss(value: str) -> bool:
-    """Backward-compatible helper; uses the configured administrator callsign."""
+def is_configured_admin_callsign(value: str) -> bool:
+    """Match the explicitly configured administrator callsign and its scoped forms."""
     return is_admin_callsign(value, os.getenv("FMO_VOICE_CONTROL_CALLSIGN", ""))
 
 

@@ -110,7 +110,7 @@ def validate_input(callsign: str, text: str) -> tuple[str, str]:
     callsign_policy.normalize(callsign)
     if callsign in callsign_policy.load_blacklist():
         raise PermissionError(f"callsign {callsign!r} is blocked")
-    if not allow_all_callsigns() and callsign not in allowed_callsigns() and not callsign_policy.is_prefixed_bh1jss(callsign):
+    if not allow_all_callsigns() and callsign not in allowed_callsigns() and not callsign_policy.is_configured_admin_callsign(callsign):
         raise PermissionError(f"callsign {callsign!r} is not allowed")
     max_input = int(os.getenv("FMO_MAX_INPUT_CHARS", "500"))
     if not text.strip() or len(text) > max_input:
