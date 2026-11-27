@@ -46,3 +46,20 @@ jobs:
           grep -qx 'FMO_VOICE_AUTO_ENABLED=false' /etc/fmo-ai-gateway.env
           grep -qx 'FMO_AUDIO_PLAYBACK_ENABLED=false' /etc/fmo-ai-gateway.env
           test "$(readlink -f /opt/fmo-ai-gateway/current)" = "/opt/fmo-ai-gateway/releases/$(cat VERSION)"
+      - name: Verify upgrade preservation and rollback
+        run: |
+          echo 'FMO_TEST_PRESERVE=upgrade-marker' | sudo tee -a /etc/fmo-ai-gateway.env >/dev/null
+          echo '{"auto_reply":false,"parrot_replay":false}' | sudo -u fmo-ai tee /var/lib/fmo-ai-gateway/control-state.json >/dev/null
+          before_env=$(sudo sha256sum /etc/fmo-ai-gateway.env | cut -d' ' -f1)
+          before_config=$(sudo sha256sum /etc/fmo-ai-gateway/gateway-config.json | cut -d' ' -f1)
+          cp -a . /tmp/fmo-upgrade-candidate
+          echo '0.2.1-ci' > /tmp/fmo-upgrade-candidate/VERSION
+          sudo bash /tmp/fmo-upgrade-candidate/scripts/install.sh --skip-packages --non-interactive
+          test "$(readlink -f /opt/fmo-ai-gateway/current)" = "/opt/fmo-ai-gateway/releases/0.2.1-ci"
+          test "$before_env" = "$(sudo sha256sum /etc/fmo-ai-gateway.env | cut -d' ' -f1)"
+          test "$before_config" = "$(sudo sha256sum /etc/fmo-ai-gateway/gateway-config.json | cut -d' ' -f1)"
+          sudo /opt/fmo-ai-gateway/current/scripts/rollback.sh
+          test "$(readlink -f /opt/fmo-ai-gateway/current)" = "/opt/fmo-ai-gateway/releases/$(cat VERSION)"
+          sudo grep -qx 'FMO_TEST_PRESERVE=upgrade-marker' /etc/fmo-ai-gateway.env
+          sudo grep -q '"auto_reply":false' /var/lib/fmo-ai-gateway/control-state.json
+          sudo /opt/fmo-ai-gateway/current/scripts/doctor.sh
