@@ -63,3 +63,37 @@ jobs:
           sudo grep -qx 'FMO_TEST_PRESERVE=upgrade-marker' /etc/fmo-ai-gateway.env
           sudo grep -q '"auto_reply":false' /var/lib/fmo-ai-gateway/control-state.json
           sudo /opt/fmo-ai-gateway/current/scripts/doctor.sh
+
+  upgrade-from-public-v0_1_2:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update && sudo apt-get install -y libopus0 ffmpeg
+      - name: Install the actual public v0.1.2 archive
+        run: |
+          curl -fsSLO https://github.com/54dashayu/fmo-ai-voice-gateway/releases/download/v0.1.2/fmo-ai-voice-gateway-0.1.2.tar.gz
+          curl -fsSLO https://github.com/54dashayu/fmo-ai-voice-gateway/releases/download/v0.1.2/fmo-ai-voice-gateway-0.1.2.tar.gz.sha256
+          sha256sum -c fmo-ai-voice-gateway-0.1.2.tar.gz.sha256
+          mkdir /tmp/fmo-v0.1.2
+          tar -xzf fmo-ai-voice-gateway-0.1.2.tar.gz -C /tmp/fmo-v0.1.2 --strip-components=1
+          sudo bash /tmp/fmo-v0.1.2/scripts/install.sh --skip-packages --non-interactive
+          echo 'FMO_TEST_PRESERVE=legacy-upgrade-marker' | sudo tee -a /etc/fmo-ai-gateway.env >/dev/null
+          echo '{"auto_reply":false,"parrot_replay":false}' | sudo -u fmo-ai tee /var/lib/fmo-ai-gateway/control-state.json >/dev/null
+      - name: Upgrade the legacy flat layout and roll back
+        run: |
+          before_env=$(sudo sha256sum /etc/fmo-ai-gateway.env | cut -d' ' -f1)
+          before_config=$(sudo sha256sum /etc/fmo-ai-gateway/gateway-config.json | cut -d' ' -f1)
+          sudo bash scripts/install.sh --skip-packages --non-interactive
+          test "$(readlink -f /opt/fmo-ai-gateway/current)" = "/opt/fmo-ai-gateway/releases/$(cat VERSION)"
+          test "$before_env" = "$(sudo sha256sum /etc/fmo-ai-gateway.env | cut -d' ' -f1)"
+          test "$before_config" = "$(sudo sha256sum /etc/fmo-ai-gateway/gateway-config.json | cut -d' ' -f1)"
+          sudo /opt/fmo-ai-gateway/current/scripts/doctor.sh
+          sudo /opt/fmo-ai-gateway/current/scripts/rollback.sh
+          test "$(basename "$(readlink -f /opt/fmo-ai-gateway/current)")" != "$(cat VERSION)"
+          sudo grep -qx 'FMO_TEST_PRESERVE=legacy-upgrade-marker' /etc/fmo-ai-gateway.env
+          sudo grep -q '"auto_reply":false' /var/lib/fmo-ai-gateway/control-state.json
+          systemctl is-active --quiet fmo-ai-gateway.service fmo-ai-mqtt-monitor.service
+          curl -fsS --max-time 2 http://127.0.0.1:18788/health >/dev/null

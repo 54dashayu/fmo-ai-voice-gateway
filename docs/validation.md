@@ -26,6 +26,8 @@
 | `v0.2.x -> 前一版本` | `current` 原子切换、两个服务恢复、用户话术/计划/开关不删除 |
 | x86_64 / ARM64 | Python 3.10–3.12、libopus、ffmpeg、systemd服务和doctor |
 
+其中 Ubuntu 22.04 x86_64 是本版本的实际 CI 安装平台；ARM64、Debian 12、Ubuntu 24.04、Rocky/AlmaLinux 9 仍属于声明兼容范围。RHEL 系默认软件源可能不含 `ffmpeg`，需要管理员先配置合规软件源，不能据此宣称已完成全发行版验证。
+
 没有实测的平台必须在 Release 说明中标为“声明支持、尚未实机验证”，不能用同架构单元测试替代发行版安装验收。
 
 ## C. 真实语音验证

@@ -54,7 +54,10 @@ install_packages() {
       ;;
     rocky|almalinux|centos|rhel)
       command -v dnf >/dev/null 2>&1 || die "RHEL-family installation requires dnf"
-      dnf install -y python3.11 python3.11-pip opus ffmpeg ca-certificates curl
+      dnf install -y python3.11 python3.11-pip opus ca-certificates curl
+      if ! command -v ffmpeg >/dev/null 2>&1; then
+        dnf install -y ffmpeg || die "ffmpeg is not available from the enabled repositories; install it from an administrator-approved repository, then rerun with --skip-packages"
+      fi
       ;;
     *) die "unsupported distribution ID=${ID:-unknown}; use --skip-packages after installing Python 3.10-3.12, venv, libopus and ffmpeg" ;;
   esac

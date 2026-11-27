@@ -68,7 +68,7 @@ AI发言标识必须与真实用户呼号清晰区分。网关可以进行普通
 |---|---|---|
 | Ubuntu 22.04 / 24.04 | x86_64、ARM64 | 3.10 / 3.12 |
 | Debian 12 | x86_64、ARM64 | 3.11 |
-| Rocky Linux / AlmaLinux 9 | x86_64、ARM64 | 3.11 |
+| Rocky Linux / AlmaLinux 9 | x86_64、ARM64 | 3.11；可能需要先从管理员认可的软件源安装 ffmpeg |
 
 安装器会自动：
 

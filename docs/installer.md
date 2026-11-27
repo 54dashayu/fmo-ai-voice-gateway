@@ -51,7 +51,7 @@ sh install.sh
 
 - 只支持Linux与systemd。
 - Python必须为3.10至3.12；Python 3.13移除了当前音频链依赖的 `audioop`。
-- 需要能够安装 `libopus`、`ffmpeg` 和 `paho-mqtt`。
+- 需要能够安装 `libopus`、`ffmpeg` 和 `paho-mqtt`。Rocky/AlmaLinux 9 的默认软件源不保证提供 `ffmpeg`；若安装器提示缺失，请先从管理员认可的软件源安装，再使用 `--skip-packages` 重试。本版本尚未在 RHEL 系发行版上完成真实安装验收。
 - 已有FMO MQTT/SAS应先独立验证正常。
 - 修改EMQX或Nginx前必须合并配置，不得覆盖主配置文件。
 
