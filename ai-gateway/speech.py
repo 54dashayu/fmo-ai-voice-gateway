@@ -259,6 +259,20 @@ def transcribe(audio_path: Path) -> dict:
     return {"text": transcript, "model": payload["model"], "bytes": len(audio)}
 
 
+def transcribe_with_retry(audio_path: Path, *, attempts: int = 2,
+                          delay_seconds: float = 0.35) -> tuple[dict, bool]:
+    """Retry one transient ASR RuntimeError without repeating any PTT action."""
+    attempts = max(1, min(int(attempts), 2))
+    for attempt in range(attempts):
+        try:
+            return transcribe(audio_path), attempt > 0
+        except RuntimeError:
+            if attempt + 1 >= attempts:
+                raise
+            time.sleep(max(0.0, min(float(delay_seconds), 1.0)))
+    raise AssertionError("unreachable")
+
+
 def cleanup_audio(directory: Path) -> int:
     ttl = int(os.getenv("FMO_AUDIO_TTL_SECONDS", "3600"))
     cutoff = time.time() - ttl

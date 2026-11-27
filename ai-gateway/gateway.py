@@ -76,10 +76,6 @@ def allow_all_callsigns() -> bool:
     return os.getenv("FMO_ALLOW_ALL_CALLSIGNS", "false").lower() == "true"
 
 
-def knowledge_enabled() -> bool:
-    return bool(gateway_config.knowledge()["enabled"])
-
-
 def _provider_headers() -> dict:
     provider = gateway_config.provider("chat")
     provider_name = str(provider.get("provider", "dashi"))
@@ -114,7 +110,7 @@ def validate_input(callsign: str, text: str) -> tuple[str, str]:
     callsign_policy.normalize(callsign)
     if callsign in callsign_policy.load_blacklist():
         raise PermissionError(f"callsign {callsign!r} is blocked")
-    if not allow_all_callsigns() and callsign not in allowed_callsigns():
+    if not allow_all_callsigns() and callsign not in allowed_callsigns() and not callsign_policy.is_prefixed_bh1jss(callsign):
         raise PermissionError(f"callsign {callsign!r} is not allowed")
     max_input = int(os.getenv("FMO_MAX_INPUT_CHARS", "500"))
     if not text.strip() or len(text) > max_input:
@@ -189,8 +185,7 @@ def build_request(
     if is_standard_qso(text):
         instructions += (
             f"对方呼号为{callsign}，本轮采用业余无线电标准通联话术。"
-            f"自报时必须完整说明‘这里是{os.getenv('FMO_ANNOUNCEMENT_NAME', 'FMO AI测试台')}’，不得冒充真实持证操作员；"
-            "先准确回应对方呼号，再按对方的话完成呼号交换、确认抄收或结束通联。"
+            f"自报时必须完整使用配置的 AI 标识‘{os.getenv('FMO_AI_CALLSIGN', 'AI-FMO')}’，不得冒充真人持证呼号；先准确回应对方呼号，再按对方的话完成呼号交换、确认抄收或结束通联。"
             "遇到CQ时简短应答，不连续重复CQ；需要拼读呼号时使用ITU字母解释法。"
             "对方说73或明确结束时，回复73并结束，不再主动展开新话题。"
             "不得虚构RST、QTH、姓名、设备和发射功率；不得说信号清楚、信号很好、满表、59或其他射频强度结论，只能说网络语音已收到或音频可辨。"
@@ -249,16 +244,13 @@ def embed_text(text: str) -> list[float]:
 
 
 def search_knowledge(text: str) -> list[dict]:
-    if not knowledge_enabled():
-        return []
-    config = gateway_config.knowledge()
-    token = config["token"]
+    token = os.getenv("FMO_KB_ADMIN_TOKEN")
     if not token:
         raise RuntimeError("FMO_KB_ADMIN_TOKEN is not set")
-    payload = {"embedding": embed_text(text), "limit": config["max_results"]}
+    payload = {"embedding": embed_text(text), "limit": int(os.getenv("FMO_KB_MAX_RESULTS", "3"))}
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    base = config["base_url"]
-    data = _post_json(f"{base}/v1/search", payload, headers, config["timeout_seconds"])
+    base = os.getenv("FMO_KB_BASE_URL", "http://127.0.0.1:18787").rstrip("/")
+    data = _post_json(f"{base}/v1/search", payload, headers, float(os.getenv("FMO_KB_TIMEOUT_SECONDS", "8")))
     results = data.get("results")
     if not isinstance(results, list):
         raise RuntimeError("NAS knowledge service returned an unexpected response")
@@ -283,7 +275,7 @@ def call_model(
 def answer(callsign: str, text: str) -> dict:
     validate_input(callsign, text)
     mode, routed_text = route_mode(text)
-    knowledge = search_knowledge(routed_text) if mode == "knowledge" and knowledge_enabled() else []
+    knowledge = search_knowledge(routed_text) if mode == "knowledge" else []
     if mode == "knowledge" and not knowledge:
         reply = call_model(callsign, routed_text, [], mode, web_search=True)
         _record(mode, "web_search_success")

@@ -1,0 +1,25 @@
+[Unit]
+Description=FMO scoped one-hop voice bridge (closed by default)
+After=network-online.target fmo-ai-mqtt-monitor.service
+[Service]
+User=fmo-ai
+Group=fmo-ai
+WorkingDirectory=/opt/fmo-ai-gateway
+EnvironmentFile=/etc/fmo-ai-gateway.env
+Environment=FMO_MQTT_HOST=127.0.0.1
+Environment=FMO_MQTT_PORT=1884
+Environment=FMO_GATEWAY_CONFIG_PATH=/etc/fmo-ai-gateway/gateway-config.json
+ExecStart=/usr/bin/python3 /opt/fmo-ai-gateway/cluster_bridge.py
+Restart=on-failure
+RestartSec=3
+StateDirectory=fmo-ai-gateway
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+MemoryMax=96M
+TasksMax=80
+[Install]
+WantedBy=multi-user.target

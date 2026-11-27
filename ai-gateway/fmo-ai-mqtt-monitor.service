@@ -7,11 +7,11 @@ Wants=network-online.target
 Type=simple
 User=fmo-ai
 Group=fmo-ai
-WorkingDirectory=/opt/fmo-ai-gateway
+WorkingDirectory=/opt/fmo-ai-gateway/current
 EnvironmentFile=/etc/fmo-ai-gateway.env
 Environment=FMO_GATEWAY_CONFIG_PATH=/etc/fmo-ai-gateway/gateway-config.json
 ExecStartPre=/usr/bin/test -w /var/lib/fmo-ai-gateway/audio
-ExecStart=/opt/fmo-ai-gateway/venv/bin/python /opt/fmo-ai-gateway/mqtt_monitor.py
+ExecStart=/opt/fmo-ai-gateway/current/venv/bin/python /opt/fmo-ai-gateway/current/mqtt_monitor.py
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
@@ -26,7 +26,7 @@ RuntimeDirectoryMode=0700
 StateDirectory=fmo-ai-gateway
 StateDirectoryMode=0700
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-MemoryMax=48M
+MemoryMax=160M
 TasksMax=16
 [Install]
 WantedBy=multi-user.target

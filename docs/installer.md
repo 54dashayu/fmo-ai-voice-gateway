@@ -32,7 +32,8 @@ sh install.sh
 
 | 路径 | 内容 |
 |---|---|
-| `/opt/fmo-ai-gateway` | 程序、状态页、Python venv与诊断工具 |
+| `/opt/fmo-ai-gateway/releases/<版本>` | 每个不可变程序版本、状态页和Python venv |
+| `/opt/fmo-ai-gateway/current` | 当前生效版本的原子符号链接 |
 | `/etc/fmo-ai-gateway.env` | 百炼Key、Token、呼号与安全开关，权限 `0600` |
 | `/etc/fmo-ai-gateway/gateway-config.json` | MQTT、模型和可选NAS配置，权限 `0600` |
 | `/var/lib/fmo-ai-gateway` | 状态、统计和短期音频目录 |
@@ -50,7 +51,7 @@ sh install.sh
 
 - 只支持Linux与systemd。
 - Python必须为3.10至3.12；Python 3.13移除了当前音频链依赖的 `audioop`。
-- 需要能够安装 `libopus` 和 `paho-mqtt`。
+- 需要能够安装 `libopus`、`ffmpeg` 和 `paho-mqtt`。
 - 已有FMO MQTT/SAS应先独立验证正常。
 - 修改EMQX或Nginx前必须合并配置，不得覆盖主配置文件。
 
@@ -64,17 +65,34 @@ FMO_ASR_ENABLED=false
 FMO_TTS_ENABLED=false
 FMO_VOICE_AUTO_ENABLED=false
 FMO_HOURLY_ANNOUNCEMENT_ENABLED=false
+FMO_AUDIO_PLAYBACK_ENABLED=false
+FMO_NET_CHECKIN_RUNTIME_ENABLED=false
 ```
 
 必须按 `docs/validation.md` 完成只读、模拟和真实验证后再逐项开放。
 
-## 回退
+## 后台地址
 
-升级前保留 `/opt/fmo-ai-gateway`、`/etc/fmo-ai-gateway*` 和systemd单元备份。出现问题时恢复这三部分并执行：
+网关默认只监听服务器回环地址：
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart fmo-ai-gateway fmo-ai-mqtt-monitor
+```text
+http://127.0.0.1:18788/ai/
 ```
 
-不要删除 `/var/lib/fmo-ai-gateway`，其中包含黑名单、呼号统计和业务开关状态。
+这只能在服务器本机访问。远程管理应把 `deploy/nginx-ai.conf.example` 合并到已有、带登录认证的 HTTPS Nginx 站点，然后使用 `https://你的域名/ai/`。不要把 `18788`、EMQX Dashboard 或 SAS 直接暴露到公网。
+
+## 升级与回退
+
+再次执行同一条公开安装命令会下载最新 Release。升级先在新的版本目录创建 venv、安装依赖并完成导入检查，随后原子切换 `current` 链接并重启两个 AI 服务；不会覆盖：
+
+- `/etc/fmo-ai-gateway.env` 中的密钥、开关和站点参数；
+- `/etc/fmo-ai-gateway/gateway-config.json`；
+- `/var/lib/fmo-ai-gateway` 中的话术、计划、黑名单、三态开关和其他运行状态。
+
+新版本未通过有界健康检查时，安装器会自动恢复上一版本。人工回退使用：
+
+```bash
+sudo /opt/fmo-ai-gateway/current/scripts/rollback.sh
+```
+
+回退只切换程序版本并重启两个 AI 服务，不回退或删除用户配置、密钥、话术、计划和状态。旧版若不能理解新版状态，应保持所有真实发射开关关闭后再检查。

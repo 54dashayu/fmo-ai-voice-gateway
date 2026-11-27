@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """Small NAS-side knowledge/data service; contains no AI model inference."""
+# Container build revision: 2026-08-18a
 
 from __future__ import annotations
 
 import hashlib
+import gallery
 import hmac
 import base64
 import json
 import math
 import os
+import random
 import re
 import sqlite3
 import time
+from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -26,6 +30,10 @@ MAX_FILE_BYTES = 100 * 1024 * 1024
 MAX_CHUNK_BYTES = 768 * 1024
 ALLOWED_EXTENSIONS = {".md", ".txt", ".pdf", ".docx", ".xlsx", ".csv"}
 UPLOAD_DIR = DATA_DIR / ".uploads"
+MUSIC_DIR = Path(os.getenv("FMO_MUSIC_DIR", "/music"))
+MUSIC_EXTENSIONS = {".mp3", ".flac", ".m4a", ".aac", ".wav", ".ogg", ".opus", ".wma"}
+MAX_MUSIC_FILES = max(1, min(20_000, int(os.getenv("FMO_MUSIC_MAX_FILES", "10000"))))
+MUSIC_CHUNK_BYTES = 64 * 1024
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -125,6 +133,135 @@ def file_entries(relative: Path) -> list[dict]:
     return entries
 
 
+def _music_key(value: str) -> str:
+    return re.sub(r"[^0-9a-z\u4e00-\u9fff]+", "", str(value or "").casefold())
+
+
+def _synchsafe(value: bytes) -> int:
+    if len(value) != 4 or any(byte & 0x80 for byte in value):
+        return 0
+    return (value[0] << 21) | (value[1] << 14) | (value[2] << 7) | value[3]
+
+
+def _id3_text(value: bytes) -> str:
+    if not value:
+        return ""
+    encoding = value[0]
+    codecs = {0: "latin-1", 1: "utf-16", 2: "utf-16-be", 3: "utf-8"}
+    try:
+        return value[1:].decode(codecs.get(encoding, "utf-8"), "replace").replace("\0", " ").strip()
+    except (LookupError, UnicodeError):
+        return ""
+
+
+@lru_cache(maxsize=20_000)
+def _music_tags_cached(path_text: str, modified_ns: int, size: int) -> tuple[str, str]:
+    """Read bounded ID3 title/artist metadata without modifying the source file."""
+    del modified_ns
+    path = Path(path_text)
+    title = artist = ""
+    if path.suffix.lower() != ".mp3" or size < 10:
+        return title, artist
+    with path.open("rb") as stream:
+        header = stream.read(10)
+        if header[:3] == b"ID3" and header[3] in {3, 4}:
+            tag_size = min(_synchsafe(header[6:10]), 256 * 1024)
+            data = stream.read(tag_size)
+            position = 0
+            while position + 10 <= len(data):
+                frame_id = data[position:position + 4]
+                raw_size = data[position + 4:position + 8]
+                if not frame_id.strip(b"\0"):
+                    break
+                frame_size = _synchsafe(raw_size) if header[3] == 4 else int.from_bytes(raw_size, "big")
+                position += 10
+                if frame_size < 1 or position + frame_size > len(data):
+                    break
+                value = data[position:position + frame_size]
+                if frame_id == b"TIT2":
+                    title = _id3_text(value)
+                elif frame_id == b"TPE1":
+                    artist = _id3_text(value)
+                position += frame_size
+                if title and artist:
+                    break
+        if (not title or not artist) and size >= 128:
+            stream.seek(-128, 2)
+            legacy = stream.read(128)
+            if legacy[:3] == b"TAG":
+                title = title or legacy[3:33].decode("latin-1", "replace").rstrip("\0 ")
+                artist = artist or legacy[33:63].decode("latin-1", "replace").rstrip("\0 ")
+    return title[:120], artist[:120]
+
+
+def music_tags(path: Path) -> tuple[str, str]:
+    stat = path.stat()
+    return _music_tags_cached(str(path), stat.st_mtime_ns, stat.st_size)
+
+
+def music_files() -> list[Path]:
+    if not MUSIC_DIR.is_dir():
+        return []
+    root = MUSIC_DIR.resolve()
+    files: list[Path] = []
+    for path in MUSIC_DIR.rglob("*"):
+        if len(files) >= MAX_MUSIC_FILES:
+            break
+        try:
+            resolved = path.resolve(strict=True)
+            if path.is_symlink() or not resolved.is_file() or root not in resolved.parents:
+                continue
+            if resolved.suffix.lower() in MUSIC_EXTENSIONS:
+                files.append(resolved)
+        except OSError:
+            continue
+    return files
+
+
+def music_id(path: Path) -> str:
+    relative = path.resolve(strict=True).relative_to(MUSIC_DIR.resolve()).as_posix()
+    return hashlib.sha256(relative.encode()).hexdigest()[:24]
+
+
+def music_search(query: str = "", *, limit: int = 10) -> list[dict]:
+    files = music_files()
+    key = _music_key(query)
+    tokens = [_music_key(item) for item in re.split(r"\s+", str(query).strip()) if _music_key(item)]
+    metadata: dict[Path, tuple[str, str]] = {}
+    if key:
+        ranked = []
+        for path in files:
+            title, artist = music_tags(path)
+            metadata[path] = (title, artist)
+            path_key = _music_key(path.relative_to(MUSIC_DIR.resolve()).as_posix())
+            title_key, artist_key = _music_key(title), _music_key(artist)
+            candidates = (path_key, title_key, artist_key, artist_key + title_key, title_key + artist_key)
+            combined = "".join(candidates[:3])
+            if any(key in candidate for candidate in candidates) or (tokens and all(token in combined for token in tokens)):
+                direct_positions = [candidate.index(key) for candidate in candidates if key in candidate]
+                ranked.append((min(direct_positions) if direct_positions else 1000, len(combined), path))
+        selected = [item[2] for item in sorted(ranked)[:max(1, min(limit, 20))]]
+    else:
+        selected = random.SystemRandom().sample(files, min(len(files), max(1, min(limit, 20)))) if files else []
+    results = []
+    for path in selected:
+        title, artist = metadata.get(path) or music_tags(path)
+        results.append({
+            "id": music_id(path), "name": (title or path.stem)[:120],
+            "artist": artist[:120], "extension": path.suffix.lower(),
+        })
+    return results
+
+
+def music_by_id(identifier: str) -> Path:
+    if not re.fullmatch(r"[a-f0-9]{24}", str(identifier or "")):
+        raise ValueError("invalid music id")
+    for path in music_files():
+        if hmac.compare_digest(music_id(path), identifier):
+            return path
+    raise ValueError("music not found")
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "FmoKnowledge/0.1"
 
@@ -167,9 +304,48 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(401, {"error": "unauthorized"})
             return
         try:
+            if path == "/v1/gallery/directories":
+                self.send_json(200, gallery.directory_list())
+                return
+            if path == "/v1/gallery/images":
+                query = parse_qs(urlparse(self.path).query)
+                recursive = query.get("recursive", ["0"])[0]
+                if recursive not in ("0", "1"):
+                    raise ValueError("recursive must be 0 or 1")
+                self.send_json(200, gallery.image_list(query.get("directory", [""])[0], recursive == "1"))
+                return
+            if path == "/v1/gallery/image":
+                data, content_type = gallery.read_image(parse_qs(urlparse(self.path).query).get("id", [""])[0])
+                self.send_response(200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(data)
+                return
             if path == "/v1/files":
                 relative = safe_relative(parse_qs(urlparse(self.path).query).get("path", [""])[0])
                 self.send_json(200, {"path": relative.as_posix() if relative.parts else "", "entries": file_entries(relative)})
+                return
+            if path == "/v1/music/search":
+                query = parse_qs(urlparse(self.path).query).get("q", [""])[0][:120]
+                results = music_search(query)
+                self.send_json(200, {"query": query, "results": results, "count": len(results)})
+                return
+            if path == "/v1/music/stream":
+                identifier = parse_qs(urlparse(self.path).query).get("id", [""])[0]
+                source = music_by_id(identifier)
+                size = source.stat().st_size
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Length", str(size))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                with source.open("rb") as stream:
+                    while chunk := stream.read(MUSIC_CHUNK_BYTES):
+                        self.wfile.write(chunk)
                 return
             if path == "/v1/admin/overview":
                 with connect() as db:

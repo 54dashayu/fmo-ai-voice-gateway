@@ -8,10 +8,15 @@ services:
       FMO_KB_PORT: "8787"
       FMO_KB_MAX_RESULTS: "10"
       FMO_KB_AUDIO_TTL_SECONDS: "3600"
+      FMO_MUSIC_DIR: "/music"
+      FMO_GALLERY_DIR: "/gallery"
+      FMO_MUSIC_MAX_FILES: "10000"
     ports:
       - "8787:8787"
     volumes:
       - ./data:/data
+      - ${FMO_MUSIC_HOST_DIR:-./music}:/music:ro
+      - ${FMO_GALLERY_HOST_DIR:-./gallery}:/gallery:ro
     mem_limit: 1g
     cpus: 1.5
     pids_limit: 100

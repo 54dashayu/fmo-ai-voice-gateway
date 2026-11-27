@@ -1,0 +1,9 @@
+[Unit]
+Description=Reconnect only the FMO AI MQTT voice link
+After=emqx.service
+Requires=emqx.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl restart fmo-ai-mqtt-monitor.service
+ExecStartPost=/usr/bin/rm -f /var/lib/fmo-ai-gateway/reconnect-mqtt.request

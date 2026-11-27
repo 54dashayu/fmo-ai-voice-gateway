@@ -13,8 +13,8 @@ import speech
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--callsign", default=os.getenv("FMO_STATION_CALLSIGN", "N0CALL"))
-    parser.add_argument("--test-text", default="这里是FMO AI测试台，请用一句话介绍你自己。")
+    parser.add_argument("--callsign", default="TEST")
+    parser.add_argument("--test-text", default="这里是个人技术研究 AI 测试台，请用一句话介绍你自己。")
     parser.add_argument("--output-dir", default=os.getenv("FMO_AUDIO_DIR", "/var/lib/fmo-ai-gateway/audio"))
     args = parser.parse_args()
     output_dir = Path(args.output_dir)

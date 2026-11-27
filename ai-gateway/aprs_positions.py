@@ -14,11 +14,11 @@ from pathlib import Path
 STATE_PATH = Path(
     os.getenv("FMO_APRS_POSITION_STATE_PATH", "/var/lib/fmo-ai-gateway/aprs-positions.json")
 )
-APRS_LOGIN = os.getenv("FMO_APRS_LOGIN", "N0CALL")
+APRS_LOGIN = os.getenv("FMO_APRS_LOGIN", "")
 APRS_SERVERS = os.getenv(
     "FMO_APRS_SERVERS", "china.aprs2.net:14580,rotate.aprs2.net:14580"
 )
-APRS_FILTER = os.getenv("FMO_APRS_FILTER", "u/APFMO*")
+APRS_FILTER = os.getenv("FMO_APRS_FILTER", "u/APFMO* p/B")
 SAVE_INTERVAL_SECONDS = 10
 RECONNECT_DELAY_SECONDS = 5
 
@@ -42,7 +42,7 @@ def normalize_callsign(value: str) -> str:
 
 
 def parse_position_packet(line: str, received_at: int | None = None) -> dict | None:
-    if ":" not in line or ">" not in line:
+    if ":" not in line or ">" not in line.split(":", 1)[0]:
         return None
     header, payload = line.split(":", 1)
     source, route = header.split(">", 1)
@@ -51,13 +51,12 @@ def parse_position_packet(line: str, received_at: int | None = None) -> dict | N
         return None
 
     destination = route.split(",", 1)[0].upper()
-    if not destination.startswith("APFMO"):
-        return None
-
     match = POSITION_RE.match(payload)
     if not match:
         return None
 
+    if float(match.group("lat_min")) >= 60 or float(match.group("lon_min")) >= 60:
+        return None
     latitude = int(match.group("lat_deg")) + float(match.group("lat_min")) / 60
     longitude = int(match.group("lon_deg")) + float(match.group("lon_min")) / 60
     if match.group("lat_hemi") == "S":
@@ -119,7 +118,9 @@ def lookup(callsign: str) -> dict | None:
     if not normalized:
         return None
     with _lock:
-        item = _positions.get(normalized)
+        candidates = [item for key, item in _positions.items()
+                      if key == normalized or ("-" not in normalized and key.startswith(normalized + "-"))]
+        item = max(candidates, key=lambda value: value.get("receivedAt", 0), default=None)
         return dict(item) if item else None
 
 

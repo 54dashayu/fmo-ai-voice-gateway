@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>FMO AI 服务状态</title>
-  <link rel="stylesheet" href="style.css?v=20260808-kb-config-v11">
+  <link rel="stylesheet" href="style.css?v=20261111-admin-nav-2">
 </head>
 <body>
   <main>
     <header>
       <div>
-        <p class="eyebrow">FMO VOICE AI GATEWAY</p>
+        <p class="eyebrow">PERSONAL RESEARCH · FMO VOICE AI</p>
         <h1>AI 服务状态</h1>
+        <nav class="admin-nav" aria-label="后台管理"><a href="net-checkin.html">AI 台网点名活动 ↗</a><a href="audio.html">音频与 SSTV 定时播放管理 ↗</a></nav>
         <p class="subtitle">VPS 网关、NAS 知识库与百炼模型的脱敏运行状态 <span style="color:var(--cyan)">（上游配置：精简/高级折叠 v2）</span></p>
       </div>
       <div id="overall" class="pill waiting">正在连接</div>
@@ -20,7 +21,7 @@
 
     <section class="grid">
       <article><span>AI 网关</span><strong id="gateway">—</strong><small id="uptime">—</small></article>
-      <article id="nas-card" class="clickable-card" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="knowledge-overlay"><span>NAS 知识库（可选）</span><strong id="nas">—</strong><small id="sections">—</small></article>
+      <article id="nas-card" class="clickable-card" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="knowledge-overlay"><span>NAS 知识库</span><strong id="nas">—</strong><small id="sections">— · 点击管理</small></article>
       <article><span>文本模型</span><strong id="chat-model">—</strong><small>阿里云百炼</small></article>
       <article><span>向量模型</span><strong id="embedding-model">—</strong><small>阿里云百炼</small></article>
     </section>
@@ -31,7 +32,7 @@
         <div><strong id="requests">0</strong><span>累计请求</span></div>
         <div><strong id="chat-count">0</strong><span>普通聊天</span></div>
         <div><strong id="knowledge-count">0</strong><span>知识问答</span></div>
-        <div><strong id="last-result">等待</strong><span>最近结果</span></div>
+        <div><strong id="last-result">等待</strong><span id="last-result-detail">最近一次处理结果</span></div>
       </div>
     </section>
 
@@ -39,7 +40,7 @@
       <h2>公网 MQTT 实时心跳</h2>
       <div class="stats">
         <div><strong id="heartbeat-public">—</strong><span>公网 MQTT 28883</span></div>
-        <div><strong id="heartbeat-emqx">—</strong><span>EMQX 本机</span></div>
+        <div><strong id="heartbeat-emqx">—</strong><span>EMQX 本机</span><small id="emqx-load">负载读取中</small></div>
         <div><strong id="heartbeat-sas">—</strong><span>SAS 鉴权</span></div>
         <div><strong id="heartbeat-action">—</strong><span>最近自愈动作</span></div>
       </div>
@@ -70,7 +71,7 @@
             <input id="provider-chat-model-simple" maxlength="64" placeholder="qwen-plus">
           </label>
           <label>知识向量模型
-            <input id="provider-embedding-model-simple" maxlength="64" placeholder="text-embedding-v4（仅知识库启用时使用）">
+            <input id="provider-embedding-model-simple" maxlength="64" placeholder="text-embedding-v4">
           </label>
           <label>ASR模型
             <input id="provider-asr-model-simple" maxlength="64" placeholder="qwen3-asr-flash">
@@ -163,39 +164,6 @@
     </section>
 
     <section class="panel">
-      <h2>NAS 知识库（可选）</h2>
-      <label class="checkbox-row">
-        <input type="checkbox" id="kb-config-enabled">
-        <span>使用 NAS 知识库</span>
-      </label>
-      <p class="hint">关闭时不连接NAS，知识问题直接使用百炼联网回答。开启后再填写下列连接参数。</p>
-      <div id="kb-config-fields" hidden>
-        <div class="gateway-config-form-grid">
-          <label>NAS知识服务地址
-            <input id="kb-config-base-url" maxlength="255" placeholder="http://127.0.0.1:18787">
-          </label>
-          <label>Token环境变量
-            <input id="kb-config-token-env" maxlength="64" placeholder="FMO_KB_ADMIN_TOKEN">
-          </label>
-          <label>独立访问Token
-            <input id="kb-config-token" type="password" autocomplete="off" placeholder="留空不改">
-          </label>
-          <label>单次检索条数
-            <input id="kb-config-max-results" type="number" min="1" max="10" value="3">
-          </label>
-          <label>请求超时（秒）
-            <input id="kb-config-timeout" type="number" min="1" max="60" step="0.5" value="8">
-          </label>
-        </div>
-      </div>
-      <div class="config-row-actions">
-        <button id="kb-config-load" type="button">读取配置</button>
-        <button id="kb-config-save" class="primary-button" type="button">保存知识库设置</button>
-      </div>
-      <p class="hint" id="kb-config-result"></p>
-    </section>
-
-    <section class="panel">
       <h2>MQTT 接入设置</h2>
       <p class="hint">MQTT 接入配置可在这里直接编辑：<button id="gateway-config-open" class="inline-manage-button" type="button">配置网关</button></p>
       <div class="stats">
@@ -205,6 +173,20 @@
         <div><strong id="mqtt-last-duration">—</strong><span>最近语段时长</span></div>
       </div>
       <p class="hint">松键判断：<span id="mqtt-end-gap">—</span> · 原始语音默认不长期保存</p>
+      <div class="link-maintenance">
+        <div>
+          <strong>AI—FMO 语音链路维护</strong>
+          <p class="hint">仅重启 AI 的 MQTT 连接进程，不重启 EMQX、SAS、Nginx，也不会断开其他 FMO 用户。</p>
+        </div>
+        <button id="voice-link-reconnect" class="warning-button" type="button">重连语音链路</button>
+      </div>
+      <p class="hint" id="voice-link-result"></p>
+      <div class="asr-monitor" id="asr-monitor" title="尚无ASR记录">
+        <i aria-hidden="true"></i>
+        <strong id="asr-monitor-meta">ASR 等待中</strong>
+        <span id="asr-monitor-text">暂无识别文本</span>
+        <small id="asr-monitor-result">—</small>
+      </div>
     </section>
 
     <section class="panel">
@@ -222,13 +204,17 @@
     <section class="panel">
       <h2>AI 业务开关</h2>
       <div class="control-grid">
-        <div><span>自动问答</span><button class="control-toggle" id="auto-reply-toggle" type="button" data-control="auto_reply">读取中</button></div>
+        <div><span>AI回复模式</span><button class="control-toggle reply-mode-toggle" type="button" data-reply-mode="auto_reply">自动回复</button><button class="control-toggle reply-mode-toggle" type="button" data-reply-mode="parrot_replay">鹦鹉海螺</button><button class="control-toggle reply-mode-toggle" type="button" data-reply-mode="off">关闭</button></div>
         <div><span>整点报时</span><button class="control-toggle" id="hourly-toggle" type="button" data-control="hourly_announcement">读取中</button></div>
         <div><span>身份语音设置</span><button class="control-toggle" id="persona-voice-toggle" type="button" data-control="persona_voice_commands">读取中</button></div>
+        <div><span>NAS音乐播放</span><button class="control-toggle" id="music-playback-toggle" type="button" data-control="music_playback">读取中</button></div>
       </div>
-      <p class="hint">网页开关受后台登录保护。“身份语音设置”关闭后，所有呼号都不能通过语音修改AI名字、性别、年龄及口音/口吻，但网页设置仍可使用。自动回复和整点报时权限由服务器端策略控制。</p>
+      <p class="hint">网页开关应由反向代理认证保护。“身份语音设置”关闭后，所有呼号都不能通过语音修改AI名字、性别、年龄及口音/口吻，但网页设置仍可使用。认证且非黑名单呼号可语音切换自动回复及鹦鹉海螺；整点报时仅限配置的管理员呼号。鹦鹉海螺默认关闭；开启后普通呼入只原声回放一次，不再重复AI回答，开关命令只播确认语且不回放。关闭鹦鹉会恢复开启前的自动回复状态；关闭自动回复则两者关闭。NAS音乐播放仍受真人发言、管理员停止、自动台网点名、频道空闲及PTT安全门禁约束。</p>
+      <p class="hint">鹦鹉海螺标准口令：我是机婶婶，我命令开启鹦鹉海螺功能；我是机婶婶，我命令关闭鹦鹉海螺功能。先满足明确身份前缀、唯一动作、服务名称及无否定/引用等硬门槛，再按规范化文本相似度 60% 命中；不使用ASR引擎 confidence。</p>
       <p class="hint" id="control-result"></p>
     </section>
+
+
 
     <section class="panel">
       <h2>AI 身份与表达</h2>
@@ -264,7 +250,7 @@
         <input id="blacklist-input" autocomplete="off" placeholder="输入呼号，使用逗号分隔">
         <button id="blacklist-save" type="button">保存黑名单</button>
       </div>
-      <div class="callsign-table-wrap">
+      <div class="callsign-table-wrap inbound-callsign-table-wrap">
         <table class="callsign-table">
           <thead><tr>
             <th><button class="sort-button" type="button" data-sort="callsign">呼号 <span class="sort-indicator"></span></button></th>
@@ -305,7 +291,7 @@
           <input id="gw-topic" maxlength="64" placeholder="FMO/RAW">
         </label>
         <label>Client ID
-          <input id="gw-client-id" maxlength="64" placeholder="FMO-AI-MONITOR-CHANGE-ME">
+          <input id="gw-client-id" maxlength="64" placeholder="FMO-AI-MONITOR">
         </label>
         <label class="checkbox-row">
           <input type="checkbox" id="gw-enabled" checked>
@@ -382,6 +368,6 @@
 
     <footer>最后刷新：<span id="updated">—</span> · 每 15 秒自动刷新</footer>
   </main>
-  <script src="app.js?v=20260808-kb-config-v11"></script>
+  <script src="app.js?checkin-page=1&v=20260818-net-schedule-v3"></script>
 </body>
 </html>

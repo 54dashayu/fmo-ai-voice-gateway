@@ -52,7 +52,7 @@ def lookup(value: str) -> dict | None:
                 f"{API_BASE}{urllib.parse.quote(grid)}",
                 headers={
                     "Accept": "application/json",
-                    "User-Agent": os.getenv("FMO_HTTP_USER_AGENT", "FMO-AI-Voice-Gateway/1.0"),
+                    "User-Agent": os.getenv("FMO_HTTP_USER_AGENT", "FMO-AI-Voice-Gateway/0.2"),
                 },
             )
             with urllib.request.urlopen(request, timeout=5) as response:

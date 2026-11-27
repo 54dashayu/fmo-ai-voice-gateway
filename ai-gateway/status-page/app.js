@@ -4,12 +4,11 @@ const state=(id,on)=>{const el=$(id);el.textContent=on?'开启':'关闭';el.clas
 const age=seconds=>{if(seconds<60)return `${seconds} 秒`;if(seconds<3600)return `${Math.floor(seconds/60)} 分钟`;if(seconds<86400)return `${Math.floor(seconds/3600)} 小时`;return `${Math.floor(seconds/86400)} 天`};
 let callsignRows=[];
 let callsignSort={key:'last_at',direction:'desc'};
-let controls={auto_reply:true,hourly_announcement:true};
+let controls={auto_reply:true,hourly_announcement:true,persona_voice_commands:true,music_playback:false,parrot_replay:false,net_checkin:false};
 let knowledgePath='';
 let blacklistValues=[];
 let blacklistLoaded=false;
 let gatewayConfigLoading=false;
-let knowledgeEnabled=false;
 let providerConfigLoading=false;
 const numericCallsignColumns=new Set(['heard','answered','blocked','last_at']);
 const gatewayDefaultConfig={mqtt_servers:[],providers:{chat:{provider:'dashscope',base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'qwen-plus',api_key_env:'DASHSCOPE_API_KEY',has_api_key:false},embedding:{provider:'dashscope',base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'text-embedding-v4',api_key_env:'DASHSCOPE_API_KEY',has_api_key:false},asr:{provider:'dashscope',base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'qwen3-asr-flash',api_key_env:'DASHSCOPE_ASR_API_KEY',has_api_key:false},tts:{provider:'dashscope',base_url:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'cosyvoice-v3-flash',api_key_env:'DASHSCOPE_TTS_API_KEY',has_api_key:false}}};
@@ -40,7 +39,7 @@ function renderGatewayForm(config){
   $('gw-host').value = String(primary.host || '127.0.0.1');
   $('gw-port').value = String(toIntOrDefault(primary.port, 1884));
   $('gw-topic').value = String(primary.topic || 'FMO/RAW');
-  $('gw-client-id').value = String(primary.client_id || 'FMO-AI-MONITOR-CHANGE-ME');
+  $('gw-client-id').value = String(primary.client_id || 'FMO-AI-MONITOR');
   $('gw-username').value = primary.username ? String(primary.username) : '';
   $('gw-password').value = '';
   const tls = (primary.tls && typeof primary.tls === 'object') ? primary.tls : {};
@@ -63,7 +62,7 @@ function collectGatewayConfigFromForm(){
     host: ($('gw-host').value || '127.0.0.1').trim(),
     port: toIntOrDefault($('gw-port').value, 1884),
     topic: ($('gw-topic').value || 'FMO/RAW').trim(),
-    client_id: ($('gw-client-id').value || 'FMO-AI-MONITOR-CHANGE-ME').trim(),
+    client_id: ($('gw-client-id').value || 'FMO-AI-MONITOR').trim(),
     username: ($('gw-username').value || '').trim(),
     password: $('gw-password').value || '',
     enabled: $('gw-enabled').checked,
@@ -125,25 +124,35 @@ async function refresh(){
     const d=await response.json(),g=d.gateway,p=d.policy;
     $('overall').textContent='运行正常';$('overall').className='pill ok';
     $('gateway').textContent='在线';$('uptime').textContent=`已运行 ${age(Math.max(0,Math.floor(Date.now()/1000)-g.started_at))}`;
-    knowledgeEnabled=Boolean(d.nas.enabled);
-    $('nas-card').classList.toggle('disabled-card',!knowledgeEnabled);
-    $('nas-card').setAttribute('aria-disabled',knowledgeEnabled?'false':'true');
-    $('nas').textContent=!knowledgeEnabled?'未启用':(d.nas.ok?'在线':'不可达');
-    $('sections').textContent=!knowledgeEnabled?'普通聊天与百炼联网问答仍可使用':((d.nas.sections==null?'切片数未知':`${d.nas.sections} 个知识切片`)+' · 点击管理');
+    $('nas').textContent=d.nas.ok?'在线':'不可达';$('sections').textContent=(d.nas.sections==null?'切片数未知':`${d.nas.sections} 个知识切片`)+' · 点击管理';
     $('chat-model').textContent=d.models.chat;$('embedding-model').textContent=d.models.embedding;
-    $('requests').textContent=g.requests_total;$('chat-count').textContent=g.chat_total;$('knowledge-count').textContent=g.knowledge_total;$('last-result').textContent=g.last_result;
+    const m=d.mqtt||{},lastVoice=m.last_voice||{};
+    const resultLabels={success:'处理成功',ignored_disabled:'已忽略（当时功能关闭）',ignored_blocked:'已忽略（黑名单）',failed:'处理失败',waiting:'等待首次请求'};
+    $('requests').textContent=g.requests_total;$('chat-count').textContent=g.chat_total;$('knowledge-count').textContent=g.knowledge_total;$('last-result').textContent=resultLabels[g.last_result]||g.last_result||'等待';
+    $('last-result-detail').textContent=lastVoice.at?`最近一次处理结果 · ${new Date(lastVoice.at*1000).toLocaleString('zh-CN',{hour12:false})}`:'最近一次处理结果';
     const w=d.watchdog||{},c=w.checks||{};
     $('heartbeat-public').textContent=c.mqtt_public?.ok?`${c.mqtt_public.latency_ms} ms`:'异常';
     $('heartbeat-emqx').textContent=c.mqtt_local?.ok&&c.emqx_process?.ok?'正常':'异常';
+    const el=w.emqx_load||{};
+    $('emqx-load').textContent=[el.cpu_percent==null?null:`CPU ${el.cpu_percent}%`,el.memory_mb==null?null:`内存 ${el.memory_mb} MB`,el.connections==null?null:`${el.connections} 连接`,el.host_load_1m==null?null:`主机负载 ${el.host_load_1m}`].filter(Boolean).join(' · ')||'负载数据等待中';
     $('heartbeat-sas').textContent=c.sas_http?.ok&&c.sas_process?.ok?'正常':'异常';
     $('heartbeat-action').textContent=w.last_action||'—';$('heartbeat-interval').textContent=w.interval_seconds||'—';
     state('ai-enabled',p.ai_enabled);$('callsigns').textContent=p.allowed_callsigns_count;state('mqtt',p.mqtt);state('asr',p.asr);state('tts',p.tts);state('ptt',p.ptt);
-    const m=d.mqtt||{},b=m.last_burst||null;
+    const b=m.last_burst||null;
     $('mqtt-mode').textContent=m.mode==='automatic'?'自动问答':(m.mode==='control_only'?'仅管理员语音控制':(m.mode==='read_only'?'只读监听':(m.mode||'离线')));
     $('mqtt-bursts').textContent=m.bursts_total||0;
     $('mqtt-last-frames').textContent=b?b.frames:'—';
     $('mqtt-last-duration').textContent=b?`${b.duration_ms} ms`:'—';
     $('mqtt-end-gap').textContent=`${m.end_gap_ms||0} ms`;
+    const asrMonitor=$('asr-monitor'),asrStages=lastVoice.stages||{};
+    const asrText=String(lastVoice.transcript||'').trim();
+    const asrTime=lastVoice.at?new Date(lastVoice.at*1000).toLocaleTimeString('zh-CN',{hour12:false}):'';
+    const asrMode=lastVoice.mode==='music'?'音乐意图':(asrText?'未匹配音乐':'无文本');
+    $('asr-monitor-meta').textContent=lastVoice.at?`${lastVoice.callsign||'未知呼号'} · ${asrTime}`:'ASR 等待中';
+    $('asr-monitor-text').textContent=asrText||asrStages.asr_error_detail||'暂无识别文本';
+    $('asr-monitor-result').textContent=lastVoice.at?`${lastVoice.result==='success'?'成功':'失败'} · ${asrMode}`:'—';
+    asrMonitor.className=`asr-monitor ${lastVoice.mode==='music'?'music':(lastVoice.result==='success'?'ok':(lastVoice.at?'failed':''))}`;
+    asrMonitor.title=lastVoice.at?[`结果：${lastVoice.result||'—'}`,`呼号：${lastVoice.callsign||'—'}`,`时长：${asrStages.decoded_duration_ms??lastVoice.input_ms??'—'} ms`,`RMS：${asrStages.input_rms??'—'}`,`峰值：${asrStages.input_peak??'—'}`,`ASR重试：${asrStages.asr_retried?'是':'否'}`,`音乐意图：${asrMode}`].join('\n'):'尚无ASR记录';
     const h=m.hourly_announcement||{};
     $('hourly-enabled').textContent=h.enabled?'开启':'关闭';$('hourly-enabled').className=h.enabled?'on':'off';
     $('hourly-window').textContent=h.enabled?`${String(h.first_hour).padStart(2,'0')}:00–${String(h.last_hour).padStart(2,'0')}:00`:'—';
@@ -160,13 +169,31 @@ async function refresh(){
     $('updated').textContent=new Date().toLocaleString('zh-CN',{hour12:false});
   }catch(e){$('overall').textContent='状态不可达';$('overall').className='pill error'}
 }
+async function reconnectVoiceLink(){
+  if(!window.confirm('确认重连 AI 与 FMO 的语音链路？其他 FMO 用户不会断线。'))return;
+  const button=$('voice-link-reconnect'),result=$('voice-link-result');
+  button.disabled=true;result.textContent='正在重连，请稍候……';
+  try{
+    const response=await fetch('api/voice-link/reconnect',{method:'POST',headers:{'Content-Type':'application/json','X-FMO-Admin':'1'},body:JSON.stringify({confirm:true})});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'重连失败');
+    result.textContent='重连命令已完成，正在等待 MQTT 恢复在线……';
+    await new Promise(resolve=>setTimeout(resolve,1500));
+    await refresh();
+    result.textContent=$('mqtt').classList.contains('on')?'语音链路已恢复在线':'连接正在恢复，请稍后刷新状态';
+  }catch(error){result.textContent=`重连失败：${error.message}`}
+  finally{button.disabled=false}
+}
 async function loadBlacklist(){const r=await fetch('api/blacklist',{headers:{'X-FMO-Admin':'1'},cache:'no-store'});if(r.ok){const d=await r.json();blacklistValues=(d.callsigns||[]).map(x=>String(x).toUpperCase());blacklistLoaded=true;$('blacklist-count').textContent=blacklistValues.length;$('blacklist-input').value=blacklistValues.join(', ');renderCallsignStats();renderBlacklistDialog()}}
 async function persistBlacklist(callsigns){const r=await fetch('api/blacklist',{method:'POST',headers:{'Content-Type':'application/json','X-FMO-Admin':'1'},body:JSON.stringify({callsigns})}),d=await r.json();if(!r.ok)throw new Error(d.error||'未知错误');blacklistValues=(d.callsigns||[]).map(x=>String(x).toUpperCase());blacklistLoaded=true;$('blacklist-count').textContent=blacklistValues.length;$('blacklist-input').value=blacklistValues.join(', ');renderCallsignStats();renderBlacklistDialog();refresh();return d}
 async function saveBlacklist(){const callsigns=$('blacklist-input').value.split(/[,，\s]+/).filter(Boolean);try{await persistBlacklist(callsigns);$('blacklist-result').textContent='黑名单已保存并立即生效'}catch(e){$('blacklist-result').textContent=`保存失败：${e.message}`}}
 async function addCallsignToBlacklist(button){const callsign=String(button.dataset.callsign||'').toUpperCase();if(!callsign)return;button.disabled=true;try{await persistBlacklist([...new Set([...blacklistValues,callsign])]);$('blacklist-result').textContent=`${callsign} 已加入黑名单，后续语音将不再处理`}catch(e){$('blacklist-result').textContent=`加入失败：${e.message}`;button.disabled=false}}
 async function removeCallsignFromBlacklist(button){const callsign=String(button.dataset.callsign||'').toUpperCase();button.disabled=true;try{await persistBlacklist(blacklistValues.filter(value=>value!==callsign));$('blacklist-dialog-result').textContent=`${callsign} 已移出黑名单`}catch(e){$('blacklist-dialog-result').textContent=`移除失败：${e.message}`;button.disabled=false}}
-function renderControls(){document.querySelectorAll('.control-toggle').forEach(button=>{const on=!!controls[button.dataset.control];button.textContent=on?'已开启':'已关闭';button.className=`control-toggle ${on?'on':'off'}`;button.disabled=false})}
+function currentReplyMode(){return controls.auto_reply?'auto_reply':(controls.parrot_replay?'parrot_replay':'off')}
+function renderReplyMode(){const current=currentReplyMode();document.querySelectorAll('.reply-mode-toggle').forEach(button=>{const on=button.dataset.replyMode===current;button.className=`control-toggle reply-mode-toggle ${on?'on':'off'}`;button.setAttribute('aria-pressed',String(on));button.disabled=false})}
+function renderControls(){document.querySelectorAll('.control-toggle[data-control]').forEach(button=>{const on=!!controls[button.dataset.control];button.textContent=on?'已开启':'已关闭';button.className=`control-toggle ${on?'on':'off'}`;button.disabled=false});renderReplyMode()}
 async function toggleControl(button){button.disabled=true;const name=button.dataset.control;try{const r=await fetch('api/control',{method:'POST',headers:{'Content-Type':'application/json','X-FMO-Admin':'1'},body:JSON.stringify({name,enabled:!controls[name]})});const d=await r.json();if(!r.ok)throw new Error(d.error||'未知错误');controls=d.controls;renderControls();$('control-result').textContent='开关已保存'}catch(e){$('control-result').textContent=`操作失败：${e.message}`;button.disabled=false}}
+async function setReplyMode(button){document.querySelectorAll('.reply-mode-toggle').forEach(item=>item.disabled=true);try{const r=await fetch('api/control',{method:'POST',headers:{'Content-Type':'application/json','X-FMO-Admin':'1'},body:JSON.stringify({name:'reply_mode',mode:button.dataset.replyMode})});const d=await r.json();if(!r.ok)throw new Error(d.error||'未知错误');controls=d.controls;renderControls();$('control-result').textContent='AI回复模式已切换'}catch(e){$('control-result').textContent=`切换失败：${e.message}`;renderReplyMode()}}
 async function loadPersona(){const r=await fetch('api/persona',{headers:{'X-FMO-Admin':'1'},cache:'no-store'});if(!r.ok)return;const d=await r.json(),p=d.persona||{},t=d.tts||{};for(const key of ['name','gender','age','accent','description'])$(`persona-${key}`).value=p[key]||'';$('persona-voice').textContent=t.voice||'—';$('persona-acoustic-accent').textContent=t.accent_effective?(t.acoustic_accent||'普通话'):`${t.requested_accent||'未设定'}（仅文字风格）`}
 async function savePersona(){const button=$('persona-save');button.disabled=true;const body={};for(const key of ['name','gender','age','accent','description'])body[key]=$(`persona-${key}`).value.trim();try{const r=await fetch('api/persona',{method:'POST',headers:{'Content-Type':'application/json','X-FMO-Admin':'1'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.error||'未知错误');$('persona-result').textContent='身份设定已保存，将用于后续百炼模型回复';loadPersona()}catch(e){$('persona-result').textContent=`保存失败：${e.message}`}finally{button.disabled=false}}
 const formatBytes=n=>{n=Number(n)||0;if(n<1024)return `${n} B`;if(n<1048576)return `${(n/1024).toFixed(1)} KB`;return `${(n/1048576).toFixed(1)} MB`};
@@ -175,7 +202,7 @@ async function loadKnowledgeOverview(){try{const r=await fetch('api/knowledge/ov
 async function loadKnowledgeFiles(path=knowledgePath){knowledgePath=path;renderBreadcrumb();try{const r=await fetch(`api/knowledge/files?path=${encodeURIComponent(path)}`,{headers:{'X-FMO-Admin':'1'},cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d.error||'目录读取失败');const entries=(d.entries||[]).filter(x=>x.name!=='@eaDir');$('kb-file-list').innerHTML=entries.length?entries.map(x=>`<tr><td>${x.type==='directory'?`<button class="file-link" type="button" data-path="${escapeHtml(x.path)}">📁 ${escapeHtml(x.name)}</button>`:escapeHtml(x.name)}</td><td>${x.type==='directory'?'目录':'文件'}</td><td>${x.type==='directory'?'—':formatBytes(x.size)}</td><td>${new Date(x.modified_at*1000).toLocaleString('zh-CN',{hour12:false})}</td><td>${x.type==='directory'?'—':(x.indexed_sections>0?`已入库 · ${x.indexed_sections}片`:'待入库')}</td></tr>`).join(''):'<tr><td colspan="5">目录为空</td></tr>';$('kb-file-list').querySelectorAll('.file-link').forEach(b=>b.addEventListener('click',()=>loadKnowledgeFiles(b.dataset.path)))}catch(e){$('kb-file-list').innerHTML=`<tr><td colspan="5">${escapeHtml(e.message)}</td></tr>`}}
 const bytesToBase64=buffer=>{const bytes=new Uint8Array(buffer);let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(binary)};
 async function uploadKnowledge(){const files=[...$('kb-upload-files').files];if(!files.length){$('kb-result').textContent='请先选择文件';return}const button=$('kb-upload-button');button.disabled=true;try{for(let fileIndex=0;fileIndex<files.length;fileIndex++){const file=files[fileIndex];if(file.size>100*1024*1024)throw new Error(`${file.name} 超过100MB`);const uploadId=[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('');let offset=0;while(offset<file.size){const end=Math.min(file.size,offset+512*1024),chunk=bytesToBase64(await file.slice(offset,end).arrayBuffer());const r=await fetch('api/knowledge/upload',{method:'POST',headers:{'Content-Type':'application/json','X-FMO-Admin':'1'},body:JSON.stringify({path:knowledgePath,name:file.name,upload_id:uploadId,offset,total_size:file.size,chunk})}),d=await r.json();if(!r.ok)throw new Error(d.error||`${file.name} 上传失败`);offset=end;$('kb-upload-progress').style.width=`${Math.round(((fileIndex+offset/file.size)/files.length)*100)}%`}$('kb-result').textContent=`已上传 ${fileIndex+1}/${files.length}：${file.name}`}$('kb-upload-files').value='';await Promise.all([loadKnowledgeFiles(),loadKnowledgeOverview()])}catch(e){$('kb-result').textContent=`上传失败：${e.message}`}finally{button.disabled=false;setTimeout(()=>{$('kb-upload-progress').style.width='0'},1500)}}
-function openKnowledge(){if(!knowledgeEnabled)return;const overlay=$('knowledge-overlay');overlay.hidden=false;document.body.classList.add('modal-open');loadKnowledgeOverview();loadKnowledgeFiles();$('knowledge-close').focus()}
+function openKnowledge(){const overlay=$('knowledge-overlay');overlay.hidden=false;document.body.classList.add('modal-open');loadKnowledgeOverview();loadKnowledgeFiles();$('knowledge-close').focus()}
 function closeKnowledge(){const overlay=$('knowledge-overlay');overlay.hidden=true;document.body.classList.remove('modal-open');$('nas-card').focus()}
 function openBlacklist(){const overlay=$('blacklist-overlay');overlay.hidden=false;document.body.classList.add('modal-open');$('blacklist-dialog-result').textContent='';loadBlacklist();$('blacklist-close').focus()}
 function closeBlacklist(){const overlay=$('blacklist-overlay');overlay.hidden=true;document.body.classList.remove('modal-open');$('blacklist-open').focus()}
@@ -410,52 +437,6 @@ async function saveProviderConfig(){
   button.disabled=false;
 }
 
-function renderKnowledgeConfig(config){
-  const value=(config&&config.knowledge)||{};
-  const enabled=Boolean(value.enabled);
-  $('kb-config-enabled').checked=enabled;
-  $('kb-config-fields').hidden=!enabled;
-  $('kb-config-base-url').value=value.base_url||'http://127.0.0.1:18787';
-  $('kb-config-token-env').value=value.token_env||'FMO_KB_ADMIN_TOKEN';
-  $('kb-config-token').value='';
-  $('kb-config-token').placeholder=value.has_token?'留空不改（已配置）':'留空不改';
-  $('kb-config-max-results').value=String(value.max_results||3);
-  $('kb-config-timeout').value=String(value.timeout_seconds||8);
-}
-
-function collectKnowledgeConfig(){
-  const value={
-    enabled:$('kb-config-enabled').checked,
-    base_url:($('kb-config-base-url').value||'http://127.0.0.1:18787').trim(),
-    token_env:($('kb-config-token-env').value||'FMO_KB_ADMIN_TOKEN').trim(),
-    max_results:toIntOrDefault($('kb-config-max-results').value,3),
-    timeout_seconds:Number($('kb-config-timeout').value||8),
-  };
-  const token=($('kb-config-token').value||'').trim();
-  if(token)value.token=token;
-  return {knowledge:value};
-}
-
-async function loadKnowledgeConfig(){
-  const button=$('kb-config-load');button.disabled=true;
-  try{
-    const {response:r,data:d}=await apiRequestJsonCandidates(detectGatewayConfigCandidates('gateway-config'),{headers:{'X-FMO-Admin':'1'},cache:'no-store'});
-    if(!r.ok)throw new Error(d.error||'读取失败');
-    renderKnowledgeConfig(d);$('kb-config-result').textContent='知识库配置已读取';
-  }catch(e){$('kb-config-result').textContent=`读取失败：${e.message}`}
-  button.disabled=false;
-}
-
-async function saveKnowledgeConfig(){
-  const button=$('kb-config-save');button.disabled=true;$('kb-config-result').textContent='保存中…';
-  try{
-    const {response:r,data:d}=await apiRequestJsonCandidates(detectGatewayConfigCandidates('gateway-config'),{method:'POST',headers:{'Content-Type':'application/json','X-FMO-Admin':'1'},body:JSON.stringify(collectKnowledgeConfig())});
-    if(!r.ok)throw new Error(d.error||'保存失败');
-    renderKnowledgeConfig(d);$('kb-config-result').textContent='已保存；重启AI网关和MQTT监听后生效。';
-  }catch(e){$('kb-config-result').textContent=`保存失败：${e.message}`}
-  button.disabled=false;
-}
-
 async function saveGatewayConfig(){
   const button=$('gateway-config-save');
   button.disabled=true;
@@ -503,6 +484,7 @@ $('blacklist-save').addEventListener('click',saveBlacklist);$('persona-save').ad
 $('provider-config-panel') && ($('provider-config-panel').open = false);
 $('provider-advanced') && ($('provider-advanced').open = false);
 $('provider-load').addEventListener('click',loadProviderConfig);$('provider-save').addEventListener('click',saveProviderConfig);renderProviderConfig({providers:{}});loadProviderConfig();
-$('kb-config-enabled').addEventListener('change',()=>{$('kb-config-fields').hidden=!$('kb-config-enabled').checked});$('kb-config-load').addEventListener('click',loadKnowledgeConfig);$('kb-config-save').addEventListener('click',saveKnowledgeConfig);renderKnowledgeConfig({knowledge:{enabled:false}});loadKnowledgeConfig();
+$('voice-link-reconnect').addEventListener('click',reconnectVoiceLink);
 document.querySelectorAll('.sort-button').forEach(button=>button.addEventListener('click',()=>changeCallsignSort(button.dataset.sort)));
-document.querySelectorAll('.control-toggle').forEach(button=>button.addEventListener('click',()=>toggleControl(button)));
+document.querySelectorAll('.control-toggle[data-control]').forEach(button=>button.addEventListener('click',()=>toggleControl(button)));
+document.querySelectorAll('.reply-mode-toggle').forEach(button=>button.addEventListener('click',()=>setReplyMode(button)));

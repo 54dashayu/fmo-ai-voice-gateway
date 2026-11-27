@@ -3,23 +3,39 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import os
+import subprocess
 import tarfile
 from pathlib import Path
 
 
-INCLUDED = ("README.md", "SECURITY.md", "VERSION", "install.sh", "install-from-github.sh", "ai-gateway", "nas-knowledge-service", "deploy", "docs", "scripts")
+INCLUDED_ROOTS = {
+    "README.md", "SECURITY.md", "VERSION", "install.sh", "install-from-github.sh",
+    "ai-gateway", "nas-knowledge-service", "deploy", "docs", "scripts",
+}
 EXCLUDED_PARTS = {".git", "dist", "__pycache__", "data", "audio", "runtime", "capture-output"}
 EXCLUDED_SUFFIXES = (".pyc", ".pyo", ".key", ".pem", ".wav", ".pcap", ".pcapng")
+SECRET_NAMES = {".env", "gateway-config.json", "cluster-credentials.json"}
 
 
 def allowed(path: Path) -> bool:
-    relative = path.parts
-    if any(part in EXCLUDED_PARTS for part in relative):
+    if not path.parts or path.parts[0] not in INCLUDED_ROOTS:
         return False
-    if path.name in {".env", "gateway-config.json"} or (path.name.startswith(".env.") and path.name != ".env.example"):
+    if any(part in EXCLUDED_PARTS for part in path.parts):
+        return False
+    if path.name in SECRET_NAMES or (path.name.startswith(".env.") and path.name != ".env.example"):
         return False
     return not path.name.endswith(EXCLUDED_SUFFIXES)
+
+
+def tracked_files(root: Path) -> list[Path]:
+    raw = subprocess.check_output(["git", "ls-files", "-z"], cwd=root)
+    files = [Path(item.decode()) for item in raw.split(b"\0") if item]
+    selected = [path for path in files if allowed(path)]
+    for relative in selected:
+        source = root / relative
+        if source.is_symlink() or not source.is_file():
+            raise RuntimeError(f"release manifest rejects non-regular file: {relative}")
+    return sorted(selected)
 
 
 def build(root: Path, version: str) -> tuple[Path, Path]:
@@ -28,12 +44,8 @@ def build(root: Path, version: str) -> tuple[Path, Path]:
     name = f"fmo-ai-voice-gateway-{version}"
     archive = dist / f"{name}.tar.gz"
     with tarfile.open(archive, "w:gz", format=tarfile.PAX_FORMAT) as bundle:
-        for item_name in INCLUDED:
-            source = root / item_name
-            for path in [source, *sorted(source.rglob("*"))] if source.is_dir() else [source]:
-                relative = path.relative_to(root)
-                if allowed(relative):
-                    bundle.add(path, arcname=Path(name) / relative, recursive=False)
+        for relative in tracked_files(root):
+            bundle.add(root / relative, arcname=Path(name) / relative, recursive=False)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     checksum = dist / f"{archive.name}.sha256"
     checksum.write_text(f"{digest}  {archive.name}\n", encoding="utf-8")

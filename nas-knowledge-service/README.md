@@ -53,3 +53,22 @@ data/
 
 VPS上的AI网关通过 `http://127.0.0.1:18787` 访问知识服务。隧道不会开放公网端口，
 也不使用百炼API Key。
+
+## 可选只读音乐与图库
+
+音乐库和 SSTV 图库复用知识服务的独立 Token，但与知识文档目录相互独立。默认示例只挂载仓库旁的 `./music` 和 `./gallery`，部署者可以在 `.env` 中改为自己的 NAS 只读目录：
+
+```text
+FMO_MUSIC_HOST_DIR=/your/read-only/music
+FMO_GALLERY_HOST_DIR=/your/read-only/gallery
+```
+
+服务不会修改源文件，并以不透明 ID 对外提供搜索或读取结果。图库支持 JPG、JPEG、PNG 和静态 WebP；忽略隐藏目录、Synology 系统目录、回收站和符号链接。以下接口均要求 `FMO_KB_ADMIN_TOKEN`：
+
+- `GET /v1/music/search?q=...`
+- `GET /v1/music/stream?id=...`
+- `GET /v1/gallery/directories`
+- `GET /v1/gallery/images?directory=<id>&recursive=0|1`
+- `GET /v1/gallery/image?id=<id>`
+
+如果不需要音乐或图库，不配置对应目录即可；不会影响知识库服务。

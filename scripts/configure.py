@@ -129,6 +129,8 @@ def main() -> int:
         "FMO_TTS_ENABLED": "false",
         "FMO_VOICE_AUTO_ENABLED": "false",
         "FMO_HOURLY_ANNOUNCEMENT_ENABLED": "false",
+        "FMO_AUDIO_PLAYBACK_ENABLED": "false",
+        "FMO_NET_CHECKIN_RUNTIME_ENABLED": "false",
     }
     if bailian_key:
         updates["DASHSCOPE_API_KEY"] = bailian_key

@@ -62,3 +62,21 @@ systemctl restart fmo-ai-mqtt-monitor
 ```
 
 真实发射期间不要重启；应等待频道空闲并通知测试方。
+
+# 可选音频、SSTV 与点名
+
+这些能力均不随安装自动开启：
+
+```text
+FMO_AUDIO_PLAYBACK_ENABLED=false
+FMO_NET_CHECKIN_RUNTIME_ENABLED=false
+FMO_SSTV_CATALOG_API_URL=
+FMO_SSTV_CATALOG_FILES_URL=
+FMO_SSTV_BODY_LEVEL_DB=-24
+FMO_CHECKIN_API_URL=
+FMO_CHECKIN_API_TOKEN=
+```
+
+SSTV 公共目录的 API 和文件根地址必须由部署者明确配置；留空时只保留本地图片编码和已导入素材。`-24 dB` 是本项目当前链路的保守正文初值，并不是通用设备校准值。外部点名系统地址和 Token 同样可选；留空时本地点名状态机仍可独立使用，不产生断链依赖。
+
+NAS 音乐和图库通过可选知识服务的只读接口访问。源目录由 NAS 服务部署者配置，本项目不会假设作者家庭网络、目录或域名。

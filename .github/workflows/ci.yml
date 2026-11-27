@@ -15,12 +15,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: sudo apt-get update && sudo apt-get install -y libopus0
+      - run: sudo apt-get update && sudo apt-get install -y libopus0 ffmpeg
       - run: python -m pip install -r ai-gateway/requirements.txt
       - run: python -m unittest discover -s ai-gateway -p 'test_*.py' -q
       - run: python -m unittest discover -s nas-knowledge-service -p 'test_*.py' -q
       - run: python -m unittest discover -s scripts -p 'test_*.py' -q
       - run: sh -n install.sh install-from-github.sh
-      - run: bash -n scripts/install.sh scripts/doctor.sh
+      - run: bash -n scripts/install.sh scripts/doctor.sh scripts/rollback.sh
       - run: bash scripts/install.sh --dry-run --skip-packages --non-interactive
       - run: python scripts/build_package.py 0.1.0-ci
+
+  install-ubuntu-x86_64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update && sudo apt-get install -y libopus0 ffmpeg
+      - name: Isolated first installation
+        run: sudo bash scripts/install.sh --skip-packages --non-interactive
+      - name: Verify safe defaults and doctor
+        run: |
+          sudo /opt/fmo-ai-gateway/current/scripts/doctor.sh
+          test "$(stat -c %a /etc/fmo-ai-gateway.env)" = 600
+          test "$(stat -c %a /etc/fmo-ai-gateway/gateway-config.json)" = 600
+          grep -qx 'FMO_AI_ENABLED=false' /etc/fmo-ai-gateway.env
+          grep -qx 'FMO_ASR_ENABLED=false' /etc/fmo-ai-gateway.env
+          grep -qx 'FMO_TTS_ENABLED=false' /etc/fmo-ai-gateway.env
+          grep -qx 'FMO_VOICE_AUTO_ENABLED=false' /etc/fmo-ai-gateway.env
+          grep -qx 'FMO_AUDIO_PLAYBACK_ENABLED=false' /etc/fmo-ai-gateway.env
+          test "$(readlink -f /opt/fmo-ai-gateway/current)" = "/opt/fmo-ai-gateway/releases/$(cat VERSION)"

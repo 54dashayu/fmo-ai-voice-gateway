@@ -28,6 +28,14 @@ class SpeechSafetyTests(unittest.TestCase):
         with patch.dict(os.environ, env, clear=True):
             self.assertEqual(speech._native_base(), "https://workspace.cn-beijing.maas.aliyuncs.com")
 
+    def test_asr_runtime_error_is_retried_once(self):
+        expected = {"text": "我想听歌"}
+        with patch.object(speech, "transcribe", side_effect=[RuntimeError("temporary"), expected]) as transcribe:
+            result, retried = speech.transcribe_with_retry(Path("unused.wav"), delay_seconds=0)
+        self.assertEqual(result, expected)
+        self.assertTrue(retried)
+        self.assertEqual(transcribe.call_count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

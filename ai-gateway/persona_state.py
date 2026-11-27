@@ -57,6 +57,8 @@ def prompt() -> str:
 
 def _split_public_command(normalized: str):
     """Return the instruction after a 60%-matched identity and command marker."""
+    if normalized.startswith("语音设置"):
+        return re.sub(r"^请", "", normalized[len("语音设置"):])
     marker = "我命令"
     marker_at = normalized.find(marker)
     marker_end = marker_at + len(marker)

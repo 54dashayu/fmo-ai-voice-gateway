@@ -8,14 +8,26 @@ import tempfile
 from pathlib import Path
 
 
-CALLSIGN_RE = re.compile(r"^[A-Z0-9][A-Z0-9/-]{2,11}$")
+CALLSIGN_RE = re.compile(r"^(?:[A-Z0-9][A-Z0-9/-]{2,11}|[A-Z]\.[A-Z0-9][A-Z0-9/-]{2,11})$")
 BLACKLIST_PATH = Path(os.getenv("FMO_CALLSIGN_BLACKLIST_PATH", "/var/lib/fmo-ai-gateway/callsign-blacklist.json"))
 STATS_PATH = Path(os.getenv("FMO_CALLSIGN_STATS_PATH", "/var/lib/fmo-ai-gateway/callsign-stats.json"))
 
 
+def is_admin_callsign(value: str, admin: str = "") -> bool:
+    value = value.strip().upper()
+    admin = admin.strip().upper()
+    return bool(admin and len(value) <= 12 and re.fullmatch(
+        r"(?:[A-Z0-9]+[./-])*" + re.escape(admin) + r"(?:[./-][A-Z0-9]+)*", value))
+
+
+def is_prefixed_bh1jss(value: str) -> bool:
+    """Backward-compatible helper; uses the configured administrator callsign."""
+    return is_admin_callsign(value, os.getenv("FMO_VOICE_CONTROL_CALLSIGN", ""))
+
+
 def normalize(value: str) -> str:
     callsign = value.strip().upper()
-    if not CALLSIGN_RE.fullmatch(callsign):
+    if not CALLSIGN_RE.fullmatch(callsign) and not is_admin_callsign(callsign):
         raise ValueError("invalid callsign")
     return callsign
 
@@ -45,7 +57,7 @@ def load_blacklist() -> set[str]:
     values = _read(BLACKLIST_PATH, [])
     if not isinstance(values, list):
         return set()
-    return {item for value in values[:1000] if isinstance(value, str) for item in [value.strip().upper()] if CALLSIGN_RE.fullmatch(item)}
+    return {item for value in values[:1000] if isinstance(value, str) for item in [value.strip().upper()] if CALLSIGN_RE.fullmatch(item) or is_admin_callsign(item)}
 
 
 def save_blacklist(values: list[str]) -> list[str]:

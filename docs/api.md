@@ -13,6 +13,13 @@
 | GET/POST | `/admin/control` | 自动回复与播报开关 | 同上 |
 | GET/POST | `/admin/persona` | AI身份表达 | 同上 |
 | GET/POST | `/admin/knowledge/*` | NAS知识库代理 | 同上 |
+| GET/POST | `/admin/net-checkin` | 本地点名设置、状态与可选外部同步 | 同上 |
+| GET | `/admin/audio` | 音频/SSTV素材、计划与运行状态 | 同上 |
+| GET | `/admin/audio/catalog` | 可选公共SSTV目录 | 同上 |
+| GET | `/admin/audio/gallery` | 可选NAS只读图库目录 | 同上 |
+| POST | `/admin/audio` | 导入、计划、立即播放或停止 | `X-FMO-Admin: 1` + `X-FMO-Audio-Request: 1` + 同源检查 |
 
 不要让浏览器自行提供 `X-FMO-Admin` 作为安全边界；公网必须先通过Nginx Basic Auth、SSO或等价管理认证。
+
+本公开 API 不包含设备证书申请、签发、私钥上传、证书生命周期管理或发证服务代理。公共信任材料如由部署者另行使用，只能是公开证书数据，不能成为安装或运行网关的隐含依赖。
 

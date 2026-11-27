@@ -9,8 +9,10 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs, unquote
+from zoneinfo import ZoneInfo
 
 import gateway
 import callsign_policy
@@ -18,9 +20,20 @@ import aprs_positions
 import reverse_geocode
 import grid_lookup
 import control_state
+import checkin_client
+import re
+import net_checkin_state
+import net_checkin_runtime
 import persona_state
 import speech
 import gateway_config
+import service_control
+import cluster_state
+import cluster_runtime
+import audio_schedule
+import audio_library
+import sstv_catalog
+import sqlite3
 
 
 MAX_BODY = 16384
@@ -31,6 +44,16 @@ WATCHDOG_STATE_PATH = os.getenv("FMO_WATCHDOG_STATE_PATH", "/run/fmo-service-wat
 APRS_POSITION_MAX_AGE = int(os.getenv("FMO_APRS_POSITION_MAX_AGE", "7200"))
 STATUS_PAGE_DIR = os.getenv("FMO_STATUS_PAGE_DIR", "/opt/fmo-ai-gateway/status-page")
 STATUS_ASSETS = {
+    "/ai/net-checkin.html": "net-checkin.html",
+    "/ai/net-checkin.js": "net-checkin.js",
+    "/ai/net-checkin.css": "net-checkin.css",
+    "/ai/audio.html": "audio.html",
+    "/ai/audio.js": "audio.js",
+    "/ai/robot36-encoder.js": "robot36-encoder.js",
+    "/ai/audio.css": "audio.css",
+    "/ai/cluster.html": "cluster.html",
+    "/ai/cluster.js": "cluster.js",
+    "/ai/cluster.css": "cluster.css",
     "/ai/": "index.html",
     "/ai/index.html": "index.html",
     "/ai/app.js": "app.js",
@@ -134,7 +157,9 @@ class Handler(BaseHTTPRequestHandler):
             "http://localhost:5173",
             "http://127.0.0.1:5173",
         }
-        if origin in allowed_origins:
+        if urlparse(self.path).path == '/aprs/position':
+            self.send_header('Access-Control-Allow-Origin', '*')
+        elif origin in allowed_origins:
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
         self.end_headers()
@@ -168,6 +193,62 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path
+        if path == "/admin/ecs-status":
+            if self.headers.get("X-FMO-Admin") != "1":
+                self.send_json(403, {"error":"需要管理员认证"})
+                return
+            try:
+                with open('/run/fmo-ecs-monitor/status.json') as stream: metrics=json.load(stream)
+                self.send_json(200, metrics)
+            except (OSError, ValueError):
+                self.send_json(503, {"error":"监控采样暂不可用"})
+            return
+        if path == "/admin/audio/gallery":
+            if self.headers.get("X-FMO-Admin") != "1":
+                self.send_json(403,{"error":"需要管理员认证"});return
+            try:
+                import nas_gallery
+                self.send_json(200,nas_gallery.directories())
+            except (ValueError,OSError,KeyError):
+                self.send_json(503,{"error":"NAS 图库暂不可用，请检查图库配置和连接"})
+            return
+        if path == "/admin/audio/catalog":
+            if self.headers.get("X-FMO-Admin") != "1":
+                self.send_json(403, {"error": "需要管理员认证"})
+                return
+            try:
+                query = parse_qs(urlparse(self.path).query)
+                self.send_json(200, sstv_catalog.listing(query.get('offset', ['0'])[0], query.get('q', [''])[0], refresh=query.get('refresh',['0'])[0]=='1'))
+            except (ValueError, OSError):
+                self.send_json(503, {"error": "SSTV 声音库暂不可用，请稍后重试；已缓存音频不受影响"})
+            return
+        if path == "/admin/audio":
+            if self.headers.get("X-FMO-Admin") != "1":
+                self.send_json(403, {"error": "需要管理员认证"})
+                return
+            try:
+                state = audio_schedule.snapshot()
+                try:
+                    with open(MQTT_STATE_PATH) as stream:
+                        monitor = json.load(stream)
+                    state['transmit_gate'] = bool(monitor.get('audio_playback_gate'))
+                    state['scheduler_error'] = monitor.get('audio_scheduler_error', '')
+                    state['exclusive'] = bool(monitor.get('audio_exclusive'))
+                except (OSError, ValueError):
+                    state['transmit_gate'] = False
+                self.send_json(200, state)
+            except (OSError, ValueError, sqlite3.Error):
+                self.send_json(503, {"error": "音频状态读取失败，请检查磁盘和服务"})
+            return
+        if path == "/admin/cluster":
+            if self.headers.get("X-FMO-Admin") != "1":
+                self.send_json(403, {"error": "需要管理员认证"})
+                return
+            try:
+                self.send_json(200, cluster_state.snapshot())
+            except (OSError, ValueError, TypeError):
+                self.send_json(503, {"error": "集群配置读取失败，请检查配置文件"})
+            return
         if self.send_status_asset(path):
             return
         if path == "/health":
@@ -231,7 +312,6 @@ class Handler(BaseHTTPRequestHandler):
             })
             return
         if path == "/aprs/position":
-            from urllib.parse import parse_qs
 
             callsign = parse_qs(urlparse(self.path).query).get("callsign", [""])[0]
             normalized = aprs_positions.normalize_callsign(callsign)
@@ -239,6 +319,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(400, {"error": "invalid callsign"})
                 return
             position = aprs_positions.lookup(normalized)
+            import aprs_history
+            historical = aprs_history.lookup(normalized)
+            if historical and (not position or historical['receivedAt'] > position['receivedAt']):
+                position = historical
             if not position:
                 self.send_json(404, {"error": "position not found", "callsign": normalized})
                 return
@@ -255,7 +339,6 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
         if path == "/grid/address":
-            from urllib.parse import parse_qs
 
             grid = parse_qs(urlparse(self.path).query).get("grid", [""])[0]
             normalized = grid_lookup.normalize_grid(grid)
@@ -273,6 +356,32 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/admin/control" and self.headers.get("X-FMO-Admin") == "1":
             self.send_json(200, {"controls": control_state.load()})
+            return
+        if path == "/admin/net-checkin" and self.headers.get("X-FMO-Admin") == "1":
+            query = parse_qs(urlparse(self.path).query)
+            try:
+                if "history" in query:
+                    self.send_json(200, checkin_client.request("/sessions"))
+                    return
+                if "export" in query:
+                    sid = query["export"][0]
+                    if not re.fullmatch(r"ai-[a-zA-Z0-9-]{8,80}", sid):
+                        self.send_json(400, {"error": "invalid session id"})
+                        return
+                    req = urllib.request.Request(checkin_client.BASE_URL + "/sessions/" + sid + "/export", headers={"Authorization": "Bearer " + checkin_client.TOKEN})
+                    with urllib.request.urlopen(req, timeout=15) as response:
+                        data = response.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    self.send_header("Content-Disposition", 'attachment; filename="' + sid + '.xlsx"')
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
+                self.send_json(200, {"settings": net_checkin_state.load(), "runtime": net_checkin_runtime.load(), "controls": control_state.load()})
+            except (RuntimeError, OSError, ValueError):
+                self.send_json(503, {"error": "历史点名服务暂时不可用，请稍后重试"})
             return
         if path == "/admin/persona" and self.headers.get("X-FMO-Admin") == "1":
             self.send_json(200, {"persona": persona_state.load(), "tts": speech.tts_profile()})
@@ -296,6 +405,49 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
+        if path == "/admin/audio":
+            origin = self.headers.get("Origin", "")
+            if (self.headers.get("X-FMO-Admin") != "1" or self.headers.get("X-FMO-Audio-Request") != "1" or
+                    (origin and urlparse(origin).netloc != self.headers.get("Host"))):
+                self.send_json(403, {"error": "需要同源管理员请求"})
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if self.headers.get("Content-Type", "").split(";")[0] == "application/octet-stream":
+                    if not 1 <= length <= audio_library.MAX_BYTES:
+                        raise ValueError("上传音频不能为空或超过 32 MiB")
+                    raw = self.rfile.read(length)
+                    if len(raw) != length:raise ValueError("文件上传不完整")
+                    self.send_json(200, audio_schedule.command({'action':'import','kind':'upload','is_sstv':self.headers.get('X-FMO-Media-Type')=='sstv','value':{'name':unquote(self.headers.get('X-FMO-Filename','')),'data':raw}}))
+                    return
+                if not 2 <= length <= MAX_BODY or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
+                    raise ValueError("请求大小或类型错误")
+                self.send_json(200, audio_schedule.command(json.loads(self.rfile.read(length))))
+            except (ValueError, TypeError) as exc:
+                self.send_json(400, {"error": str(exc) if isinstance(exc, ValueError) else "请求字段类型错误"})
+            except (OSError, sqlite3.Error):
+                self.send_json(503, {"error": "音频操作失败，请检查文件权限、磁盘或稍后重试"})
+            return
+        if path in {"/admin/cluster", "/admin/cluster-credentials"}:
+            origin = self.headers.get("Origin", "")
+            if (self.headers.get("X-FMO-Admin") != "1" or
+                self.headers.get("X-FMO-Cluster-Request") != "1" or
+                (origin and urlparse(origin).netloc != self.headers.get("Host"))):
+                self.send_json(403, {"error": "需要同源管理员请求"})
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if not 2 <= length <= 65536 or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
+                    raise ValueError("请求大小或类型错误")
+                body = json.loads(self.rfile.read(length))
+                self.send_json(200, cluster_runtime.store_credentials(body) if path.endswith("-credentials") else cluster_state.save(body))
+            except cluster_state.Conflict as exc:
+                self.send_json(409, {"error": str(exc)})
+            except (ValueError, TypeError) as exc:
+                self.send_json(400, {"error": str(exc)})
+            except OSError:
+                self.send_json(503, {"error": "配置保存失败，原配置保留"})
+            return
         if path == "/admin/blacklist" and self.headers.get("X-FMO-Admin") == "1":
             try:
                 length = int(self.headers.get("Content-Length", "0"))
@@ -313,10 +465,30 @@ class Handler(BaseHTTPRequestHandler):
                 if length < 2 or length > MAX_BODY:
                     raise ValueError("invalid body length")
                 body = json.loads(self.rfile.read(length))
-                if set(body) != {"name", "enabled"}:
-                    raise ValueError("expected name and enabled")
-                values = control_state.save({str(body["name"]): body["enabled"]})
+                if set(body) == {"name", "mode"} and body.get("name") == "reply_mode":
+                    control_name = "reply_mode"
+                    values = control_state.set_reply_mode(str(body["mode"]))
+                elif set(body) == {"name", "enabled"}:
+                    control_name = str(body["name"])
+                    values = control_state.save({control_name: body["enabled"]})
+                else:
+                    raise ValueError("expected reply mode or name and enabled")
+                if control_name == "net_checkin" and body["enabled"] is False:
+                    net_checkin_runtime.force_end()
                 self.send_json(200, {"ok": True, "controls": values})
+            except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                self.send_json(400, {"error": str(exc)})
+            return
+        if path == "/admin/net-checkin" and self.headers.get("X-FMO-Admin") == "1":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length < 2 or length > MAX_BODY:
+                    raise ValueError("invalid body length")
+                body = json.loads(self.rfile.read(length))
+                values = net_checkin_state.save(body, now=datetime.now(ZoneInfo("Asia/Shanghai")))
+                if not control_state.enabled("net_checkin"):
+                    net_checkin_runtime.force_end()
+                self.send_json(200, {"ok": True, "settings": values})
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 self.send_json(400, {"error": str(exc)})
             return
@@ -355,6 +527,20 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(400, {"error": str(exc)})
             except OSError as exc:
                 self.send_json(503, {"error": f"unable to write config: {exc}"})
+            return
+        if path == "/admin/voice-link/reconnect" and self.headers.get("X-FMO-Admin") == "1":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length < 2 or length > MAX_BODY:
+                    raise ValueError("invalid body length")
+                body = json.loads(self.rfile.read(length))
+                if body != {"confirm": True}:
+                    raise ValueError("explicit confirmation required")
+                self.send_json(200, service_control.reconnect_voice_link())
+            except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                self.send_json(400, {"error": str(exc)})
+            except RuntimeError as exc:
+                self.send_json(503, {"error": str(exc)})
             return
         if not self.authorized():
             self.send_json(401, {"error": "unauthorized"})

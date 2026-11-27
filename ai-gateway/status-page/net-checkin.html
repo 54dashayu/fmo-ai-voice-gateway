@@ -1,0 +1,31 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>AI 台网点名</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="net-checkin.css"></head><body><main><a href="./">← AI 首页</a><header><div><p class="eyebrow">PERSONAL RESEARCH · FMO VOICE AI</p><h1>AI 台网点名</h1><p class="subtitle">活动设置 · 实时状态 · 参与名单</p></div></header><section class="panel"><h2>当前活动</h2><p id="live" role="status">读取中…</p></section>    <section class="panel">
+      <h2>自动台网点名设置</h2>
+      <div class="net-checkin-top">
+        <div class="net-checkin-switch">
+          <span>启用自动台网点名</span><button class="control-toggle" id="net-checkin-toggle" type="button" data-control="net_checkin">读取中</button>
+          <p class="hint">关闭后不按计划时间执行；开启后按照右侧北京时间和下方话术自动执行。</p>
+        </div>
+        <div class="net-checkin-time-block">
+          <div class="net-checkin-time-grid">
+            <label>执行方式<select id="net-checkin-schedule-mode"><option value="once">不循环</option><option value="daily">每天</option><option value="weekly">每周</option></select></label>
+            <label>计划开始时间<input id="net-checkin-start-time" type="time"></label>
+            <label>计划结束时间<input id="net-checkin-end-time" type="time"></label>
+          </div>
+          <div class="net-checkin-schedule-extra">
+            <label id="net-checkin-date-label">执行日期<input id="net-checkin-date" type="date"></label>
+            <label id="net-checkin-weekday-label">每周执行日<select id="net-checkin-weekday"><option value="0">星期一</option><option value="1">星期二</option><option value="2">星期三</option><option value="3">星期四</option><option value="4">星期五</option><option value="5">星期六</option><option value="6">星期日</option></select></label>
+          </div>
+          <p class="hint">时间按北京时间保存；下一次开始必须至少晚于当前时间2分钟。不循环时选择具体日期；循环时可选择每天或每周。</p>
+          <p class="schedule-alert" id="net-checkin-schedule-alert" role="alert" hidden></p>
+        </div>
+      </div>
+      <div class="net-checkin-grid">
+        <label>点名开始话术<textarea id="net-checkin-opening" maxlength="500" rows="3"></textarea></label>
+        <label>逐呼号询问话术<textarea id="net-checkin-question" maxlength="500" rows="3"></textarea></label>
+        <label>点名结束话术<textarea id="net-checkin-closing" maxlength="500" rows="3"></textarea></label>
+      </div>
+      <button id="net-checkin-save" class="primary-button" type="button">保存台网点名设置</button>
+      <p class="hint">询问话术支持 <code>{callsign}</code> 占位符，正式运行时会替换为当前呼号。保存设置不会立即开始点名；必须启用本区域的自动台网点名开关，并等待计划开始时间。</p>
+      <p class="hint">工作流：首个连续发射满3秒的MQTT呼号成为当前友台；只有当前友台进入ASR，其他呼号在本轮返回繁忙且不排队。三次呼叫无回应后释放当前友台，再等待下一位重新呼叫。QTH、设备和功率按字段增量补录，已抄收项目不会因补报而清空；功率统一为H、M、L或5W等格式。</p>
+      <p class="hint" id="net-checkin-result"></p>
+    </section><p id="control-result" role="status"></p><section class="panel"><h2>历次活动参与名单</h2><p class="hint">按活动开始时间倒序显示，点击活动展开已确认名单。Excel 导出该活动当前已确认记录。</p><button id="refresh-history" class="primary-button">刷新名单</button><p id="history-error" role="status"></p><div id="history">读取中…</div></section></main><script src="net-checkin.js?v=1"></script></body></html>
