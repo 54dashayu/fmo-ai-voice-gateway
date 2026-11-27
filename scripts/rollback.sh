@@ -16,8 +16,9 @@ systemctl daemon-reload
 if ! systemctl restart fmo-ai-gateway.service fmo-ai-mqtt-monitor.service; then
   ln -s "$current" "$APP_DIR/.current-rollback"
   mv -Tf "$APP_DIR/.current-rollback" "$CURRENT_LINK"
+  printf '%s\n' "$previous" > "$PREVIOUS_FILE"
   systemctl restart fmo-ai-gateway.service fmo-ai-mqtt-monitor.service || true
-  echo "rollback target failed to start; restored $(basename "$current")" >&2
+  echo "rollback target failed to start; switched current back to $(basename "$current")" >&2
   exit 1
 fi
 ready=false
