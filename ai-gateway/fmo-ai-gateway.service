@@ -25,6 +25,7 @@ RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 MemoryMax=256M
 TasksMax=40
 Environment=FMO_AUDIO_DIR=/var/lib/fmo-ai-gateway/audio
+Environment=FMO_STATUS_PAGE_DIR=/opt/fmo-ai-gateway/current/status-page
 Environment=FMO_MQTT_STATE_PATH=/run/fmo-ai-mqtt/status.json
 Environment=FMO_ALLOW_ALL_CALLSIGNS=false
 Environment=FMO_CALLSIGN_BLACKLIST_PATH=/var/lib/fmo-ai-gateway/callsign-blacklist.json
