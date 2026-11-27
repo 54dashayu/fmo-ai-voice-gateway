@@ -79,7 +79,7 @@ FMO_NET_CHECKIN_RUNTIME_ENABLED=false
 http://127.0.0.1:18788/ai/
 ```
 
-这只能在服务器本机访问。远程管理应把 `deploy/nginx-ai.conf.example` 合并到已有、带登录认证的 HTTPS Nginx 站点，然后使用 `https://你的域名/ai/`。不要把 `18788`、EMQX Dashboard 或 SAS 直接暴露到公网。
+该端口用于网关健康检查和后台静态页面。完整管理功能需要 Nginx 做 API 路径映射。使用主分支更新后的示例，按 [README 的后台配置步骤](../README.md#安装后打开后台)配置 HTTPS 或仅回环监听的 SSH 隧道入口。将 `18788` 保持在回环地址。
 
 ## 升级与回退
 

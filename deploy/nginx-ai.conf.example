@@ -1,54 +1,37 @@
+# Include inside a dedicated authenticated server block.
 location = /ai {
     return 301 /ai/;
-}
-
-location ^~ /ai/ {
-    auth_basic "FMO AI Admin";
-    auth_basic_user_file /etc/nginx/auth/fmo-ai.htpasswd;
-    proxy_pass http://127.0.0.1:18788/ai/;
-    proxy_set_header Host $host;
-    add_header Cache-Control "no-store";
 }
 
 location = /ai/api/status {
     auth_basic "FMO AI Admin";
     auth_basic_user_file /etc/nginx/auth/fmo-ai.htpasswd;
     proxy_pass http://127.0.0.1:18788/status;
+    proxy_set_header X-FMO-Admin "";
     add_header Cache-Control "no-store";
 }
 
-location ~ ^/ai/api/(gateway-config|blacklist|control|persona)$ {
+location ~ ^/ai/api/(gateway-config|blacklist|control|persona|knowledge/(overview|files|upload)|audio(/gallery|/catalog)?|net-checkin|voice-link/reconnect)$ {
     auth_basic "FMO AI Admin";
     auth_basic_user_file /etc/nginx/auth/fmo-ai.htpasswd;
-    proxy_pass http://127.0.0.1:18788/admin/$1;
+    rewrite ^/ai/api/(.*)$ /admin/$1 break;
+    proxy_pass http://127.0.0.1:18788;
     proxy_set_header X-FMO-Admin 1;
-    proxy_set_header Host $host;
-    client_max_body_size 2m;
-    add_header Cache-Control "no-store";
-}
-
-location = /ai/api/knowledge/overview {
-    auth_basic "FMO AI Admin";
-    auth_basic_user_file /etc/nginx/auth/fmo-ai.htpasswd;
-    proxy_pass http://127.0.0.1:18788/admin/knowledge/overview;
-    proxy_set_header X-FMO-Admin 1;
-    add_header Cache-Control "no-store";
-}
-
-location = /ai/api/knowledge/files {
-    auth_basic "FMO AI Admin";
-    auth_basic_user_file /etc/nginx/auth/fmo-ai.htpasswd;
-    proxy_pass http://127.0.0.1:18788/admin/knowledge/files$is_args$args;
-    proxy_set_header X-FMO-Admin 1;
-    add_header Cache-Control "no-store";
-}
-
-location = /ai/api/knowledge/upload {
-    auth_basic "FMO AI Admin";
-    auth_basic_user_file /etc/nginx/auth/fmo-ai.htpasswd;
-    proxy_pass http://127.0.0.1:18788/admin/knowledge/upload;
-    proxy_set_header X-FMO-Admin 1;
-    client_max_body_size 2m;
+    proxy_set_header Authorization "";
+    proxy_set_header Host $http_host;
+    client_max_body_size 32m;
     proxy_read_timeout 30s;
+    add_header Cache-Control "no-store";
+}
+
+location ~ ^/ai/api/ {
+    return 404;
+}
+
+location /ai/ {
+    auth_basic "FMO AI Admin";
+    auth_basic_user_file /etc/nginx/auth/fmo-ai.htpasswd;
+    proxy_pass http://127.0.0.1:18788;
+    proxy_set_header X-FMO-Admin "";
     add_header Cache-Control "no-store";
 }

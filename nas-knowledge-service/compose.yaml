@@ -12,7 +12,7 @@ services:
       FMO_GALLERY_DIR: "/gallery"
       FMO_MUSIC_MAX_FILES: "10000"
     ports:
-      - "8787:8787"
+      - "${FMO_KB_BIND_IP:-127.0.0.1}:8787:8787"
     volumes:
       - ./data:/data
       - ${FMO_MUSIC_HOST_DIR:-./music}:/music:ro

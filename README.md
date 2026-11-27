@@ -80,11 +80,28 @@ AI发言标识必须与真实用户呼号清晰区分。网关可以进行普通
 - 安装并启动两个systemd服务。
 - 保存Nginx与EMQX配置示例，但不覆盖现有服务配置。
 
-安装后诊断：
+完整安装、升级和回退已在 Ubuntu 22.04 x86_64 CI 验证，包括从公开 v0.1.2 迁移。Python 3.10–3.12 已通过单元测试。表内其余发行版与 ARM64 尚未完成安装实测。
+
+### 安装后打开后台
+
+网关监听服务器回环地址 `http://127.0.0.1:18788/ai/`。完整网页操作需要把浏览器请求的 `/ai/api/*` 映射到后端 API。部署时从 [主分支取修正后的 Nginx 示例](https://raw.githubusercontent.com/54dashayu/fmo-ai-voice-gateway/main/deploy/nginx-ai.conf.example)，适用于已安装的 v0.2.1。配置认证文件后把示例纳入专用 Nginx 虚拟主机，执行 `sudo nginx -t && sudo systemctl reload nginx`。浏览器通过 `https://你的管理域名/ai/` 登录。示例只在通过 Basic Auth 的管理 API 路由上由代理设置 `X-FMO-Admin`，并保留请求主机名供同源校验。
+
+只经 SSH 管理时，可将上述示例纳入一个监听 `127.0.0.1:18789` 的 Nginx `server` 块，然后从自己的电脑执行下面的命令，打开 `http://127.0.0.1:18789/ai/`。隧道目标是带路由的 Nginx 入口。
+
+首次创建认证文件可执行 `sudo install -d -m 0755 /etc/nginx/auth` 和 `sudo htpasswd -c /etc/nginx/auth/fmo-ai.htpasswd admin`，按提示输入独立管理密码。已有文件时去掉 `-c`，并确保 Nginx worker 可读该文件。
 
 ```bash
-sudo /opt/fmo-ai-gateway/scripts/doctor.sh
+ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:18789:127.0.0.1:18789 user@server
 ```
+
+### 补跑向导和诊断
+
+```bash
+sudo /opt/fmo-ai-gateway/current/venv/bin/python /opt/fmo-ai-gateway/current/scripts/configure.py
+sudo /opt/fmo-ai-gateway/current/scripts/doctor.sh
+```
+
+程序版本位于 `/opt/fmo-ai-gateway/releases/<版本>`，`current` 指向运行版本。持久配置位于 `/etc/fmo-ai-gateway.env` 和 `/etc/fmo-ai-gateway/gateway-config.json`，业务状态位于 `/var/lib/fmo-ai-gateway`。升级可重新运行一键安装命令。需要切回上一版本时运行 `sudo /opt/fmo-ai-gateway/current/scripts/rollback.sh`。参见 [安装与恢复说明](docs/installer.md)。
 
 项目的设计背景、目标和完整技术路径见 [项目初衷、目标与实现方案](docs/project-overview.md)。
 
@@ -124,6 +141,8 @@ FMO_ASR_ENABLED=false
 FMO_TTS_ENABLED=false
 FMO_VOICE_AUTO_ENABLED=false
 FMO_HOURLY_ANNOUNCEMENT_ENABLED=false
+FMO_AUDIO_PLAYBACK_ENABLED=false
+FMO_NET_CHECKIN_RUNTIME_ENABLED=false
 ```
 
 这些开关必须经过分级验证后逐项开启，不能因为健康页面显示正常就直接启用PTT。
@@ -215,6 +234,13 @@ FMO_KB_ADMIN_TOKEN=
 | 请求超时 | `8`秒 | NAS在该时间内未响应则视为本次访问失败 |
 
 独立Token需要同时配置在NAS知识服务和AI网关，两端内容必须一致。它不能使用百炼API Key，也不得提交到Git。页面显示“留空不改（已配置）”时表示现有Token有效，日常保存无需重新输入。
+
+## 回复模式与可选业务
+
+- 在 `/ai/` 选择 AI 自动回复、鹦鹉原声回放或关闭。鹦鹉回放真人原声。语音控制链路开启后，可说「我是机婶婶，我命令开启鹦鹉海螺功能」或对应的「关闭」命令。默认 60% 指 ASR 转写后的文本相似度。关闭鹦鹉会恢复启用前的自动回复状态。后台选择关闭或语音关闭自动回复会关闭两种模式并清除恢复标记。
+- 在 `/ai/audio.html` 导入固定音频素材，或用本机图片在浏览器编码 Robot36 后保存。可选远程目录用 `FMO_SSTV_CATALOG_API_URL` 和 `FMO_SSTV_CATALOG_FILES_URL` 配置兼容的目录和文件地址，留空即可使用本地素材。建立计划时设置素材、时间和提示话术，SSTV 提前约 60 秒准备，播放期间独占。正文电平初值为 `-24 dB`，按接收链路试听校准。播放还需通过音频总开关和频道安全门。
+- NAS 知识、音乐和随机图库共用服务地址与独立 Bearer Token。知识库单独启用并验证检索。图库在音频页面选择目录、是否递归与张数，网关临时转码。音乐与图库使用不同的只读源目录。查看 [NAS 安装、挂载与接口](nas-knowledge-service/README.md)。
+- 在 `/ai/net-checkin.html` 保存本地点名计划并检查实时与历史记录。启用运行前核对 `FMO_NET_CHECKIN_RUNTIME_ENABLED` 及页面开关。外部同步可通过 `FMO_CHECKIN_API_URL` 和 `FMO_CHECKIN_API_TOKEN` 配置兼容服务，留空时使用本地功能。
 
 ## 呼号与AI身份
 

@@ -29,6 +29,16 @@ data/
 
 ## 资源限制
 
+从主分支取得本目录，在 NAS 上创建权限为 `0600` 的 `.env` 并填入独立的 `FMO_KB_ADMIN_TOKEN`。按需配置下文的两个只读媒体目录，确保数据目录可写，然后启动：
+
+```sh
+mkdir -p data music gallery
+docker compose up -d --build
+curl -fsS http://127.0.0.1:8787/health
+```
+
+主分支 Compose 默认使用 `FMO_KB_BIND_IP=127.0.0.1`，适用于同机访问或下面的反向 SSH 隧道。使用受控专网直连时，将该变量设为 NAS 的实际专网接口地址，并通过防火墙只允许网关访问。旧发布包的 Compose 若仍写 `"8787:8787"`，可直接改为 `"127.0.0.1:8787:8787"` 后再启动。网关侧设置服务地址及同一 Token。音乐和图库接口使用 `Authorization: Bearer …`。
+
 - CPU上限：1.5核。
 - 内存上限：1 GiB。
 - 进程数上限：100。
