@@ -38,13 +38,13 @@ jobs:
       - name: Verify safe defaults and doctor
         run: |
           sudo /opt/fmo-ai-gateway/current/scripts/doctor.sh
-          test "$(stat -c %a /etc/fmo-ai-gateway.env)" = 600
-          test "$(stat -c %a /etc/fmo-ai-gateway/gateway-config.json)" = 600
-          grep -qx 'FMO_AI_ENABLED=false' /etc/fmo-ai-gateway.env
-          grep -qx 'FMO_ASR_ENABLED=false' /etc/fmo-ai-gateway.env
-          grep -qx 'FMO_TTS_ENABLED=false' /etc/fmo-ai-gateway.env
-          grep -qx 'FMO_VOICE_AUTO_ENABLED=false' /etc/fmo-ai-gateway.env
-          grep -qx 'FMO_AUDIO_PLAYBACK_ENABLED=false' /etc/fmo-ai-gateway.env
+          test "$(sudo stat -c %a /etc/fmo-ai-gateway.env)" = 600
+          test "$(sudo stat -c %a /etc/fmo-ai-gateway/gateway-config.json)" = 600
+          sudo grep -qx 'FMO_AI_ENABLED=false' /etc/fmo-ai-gateway.env
+          sudo grep -qx 'FMO_ASR_ENABLED=false' /etc/fmo-ai-gateway.env
+          sudo grep -qx 'FMO_TTS_ENABLED=false' /etc/fmo-ai-gateway.env
+          sudo grep -qx 'FMO_VOICE_AUTO_ENABLED=false' /etc/fmo-ai-gateway.env
+          sudo grep -qx 'FMO_AUDIO_PLAYBACK_ENABLED=false' /etc/fmo-ai-gateway.env
           test "$(readlink -f /opt/fmo-ai-gateway/current)" = "/opt/fmo-ai-gateway/releases/$(cat VERSION)"
       - name: Verify upgrade preservation and rollback
         run: |
